@@ -204,30 +204,55 @@ function DocumentsTab() {
   const [externalUrl, setExternalUrl] = useState("");
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [msg, setMsg] = useState("");
 
   const load = async () => {
-    const r = await fetch("/api/documents");
-    const d = await r.json();
-    setDocs(d.documents || []);
+    setErr("");
+    try {
+      const r = await fetch("/api/documents");
+      const d = await r.json();
+      if (d.error) { setErr("Couldn't load documents: " + d.error); setDocs([]); return; }
+      setDocs(d.documents || []);
+    } catch (e) {
+      setErr("Network error loading documents: " + e.message);
+    }
   };
   useEffect(() => { load(); }, []);
 
   const add = async () => {
-    if (!title.trim()) return;
+    setErr(""); setMsg("");
+    if (!title.trim()) { setErr("Document title is required."); return; }
+    if (!file && !externalUrl.trim()) { setErr("Add either a file OR an external link."); return; }
     setBusy(true);
-    if (file) {
-      const fd = new FormData();
-      fd.append("file", file); fd.append("title", title); fd.append("description", desc);
-      fd.append("category", cat); fd.append("product", product);
-      await fetch("/api/admin/documents", { method: "POST", body: fd });
-    } else {
-      await fetch("/api/admin/documents", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description: desc, category: cat, product, external_url: externalUrl, file_type: "Link" }),
-      });
+    try {
+      let r;
+      if (file) {
+        const fd = new FormData();
+        fd.append("file", file); fd.append("title", title.trim()); fd.append("description", desc);
+        fd.append("category", cat); fd.append("product", product);
+        r = await fetch("/api/admin/documents", { method: "POST", body: fd });
+      } else {
+        r = await fetch("/api/admin/documents", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: title.trim(), description: desc, category: cat, product, external_url: externalUrl, file_type: "Link" }),
+        });
+      }
+      const data = await r.json();
+      if (!r.ok || data.error) {
+        setErr("Upload failed: " + (data.error || "Server returned " + r.status));
+      } else {
+        setMsg("Document added!");
+        setTitle(""); setDesc(""); setExternalUrl(""); setFile(null);
+        const fileInput = document.querySelector('input[type="file"]');
+        if (fileInput) fileInput.value = "";
+        load();
+        setTimeout(() => setMsg(""), 2500);
+      }
+    } catch (e) {
+      setErr("Network error: " + e.message);
     }
-    setTitle(""); setDesc(""); setExternalUrl(""); setFile(null);
-    setBusy(false); load();
+    setBusy(false);
   };
 
   const del = async (id) => {
@@ -243,14 +268,16 @@ function DocumentsTab() {
     <div>
       <div style={{ ...cardStyle, background: "rgba(103,58,182,0.02)", border: `1.5px solid rgba(103,58,182,0.12)` }}>
         <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: P }}>Add new document</div>
-        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Document title" style={inpStyle} />
+        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Document title (required)" style={inpStyle} />
         <input value={desc} onChange={e => setDesc(e.target.value)} placeholder="Description (optional)" style={{ ...inpStyle, marginTop: 8 }} />
-        <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: P, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 10, marginBottom: 5 }}>Category</div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {["Sales", "Product", "Training", "Process", "Other"].map(c => (
             <button key={c} onClick={() => setCat(c)} style={pillBtn(cat === c)}>{c}</button>
           ))}
         </div>
-        <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: P, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 10, marginBottom: 5 }}>Product</div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {["oolio", "ordermate", "bepoz", "general"].map(p => (
             <button key={p} onClick={() => setProduct(p)} style={pillBtn(product === p)}>{p}</button>
           ))}
@@ -259,10 +286,14 @@ function DocumentsTab() {
           <div style={{ fontSize: 11, fontWeight: 700, color: P, marginBottom: 6 }}>Upload a file</div>
           <input type="file" onChange={e => setFile(e.target.files?.[0] || null)} style={{ fontSize: 12 }} />
           {file && <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>{file.name}</div>}
-          <div style={{ fontSize: 11, color: "#999", marginTop: 8 }}>OR provide an external link:</div>
-          <input value={externalUrl} onChange={e => setExternalUrl(e.target.value)} placeholder="https://sharepoint.com/..." disabled={!!file} style={{ ...inpStyle, marginTop: 4 }} />
+          <div style={{ fontSize: 11, color: "#999", marginTop: 8, marginBottom: 4 }}>OR provide an external link:</div>
+          <input value={externalUrl} onChange={e => setExternalUrl(e.target.value)} placeholder="https://sharepoint.com/..." disabled={!!file} style={inpStyle} />
         </div>
-        <button onClick={add} disabled={busy || !title.trim() || (!file && !externalUrl.trim())} style={{ width: "100%", padding: 10, marginTop: 10, borderRadius: 10, border: "none", background: title.trim() && (file || externalUrl.trim()) ? `linear-gradient(135deg, ${P}, ${P2})` : "#D4D0DA", color: "white", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>{busy ? "Uploading..." : "Add Document"}</button>
+        {err && <div style={{ fontSize: 12, color: "#DC2626", marginTop: 10, padding: 8, background: "rgba(220,38,38,0.06)", borderRadius: 8 }}>⚠️ {err}</div>}
+        {msg && <div style={{ fontSize: 12, color: "#16A34A", marginTop: 10, padding: 8, background: "rgba(22,163,74,0.06)", borderRadius: 8 }}>✓ {msg}</div>}
+        <button onClick={add} disabled={busy} style={{ width: "100%", padding: 11, marginTop: 10, borderRadius: 10, border: "none", background: busy ? "#D4D0DA" : `linear-gradient(135deg, ${P}, ${P2})`, color: "white", fontWeight: 700, fontSize: 13, cursor: busy ? "default" : "pointer" }}>
+          {busy ? "Uploading..." : "Add Document"}
+        </button>
       </div>
 
       <div style={{ fontSize: 11, fontWeight: 700, color: P, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>All documents ({docs.length})</div>
