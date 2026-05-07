@@ -28,7 +28,13 @@ function detectProduct(q) {
 }
 
 export async function POST(request) {
-  try {
+  try {// DIAGNOSTIC
+const missing = [];
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL) missing.push("NEXT_PUBLIC_SUPABASE_URL");
+if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) missing.push("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) missing.push("SUPABASE_SERVICE_ROLE_KEY");
+if (!process.env.ANTHROPIC_API_KEY) missing.push("ANTHROPIC_API_KEY");
+if (missing.length > 0) return Response.json({ error: `Missing env vars: ${missing.join(", ")}` }, { status: 500 });
     const auth = await getCurrentUser();
     if (!auth) return Response.json({ error: "Not authenticated" }, { status: 401 });
     const { user, profile } = auth;
