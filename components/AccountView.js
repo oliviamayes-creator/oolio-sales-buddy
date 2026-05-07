@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { createClient } from "../../lib/supabase-browser";
+import { createClient } from "../lib/supabase-browser";
 
 const P = "#673AB6", P2 = "#5E35B1";
 
