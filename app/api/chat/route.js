@@ -32,6 +32,36 @@ HARD RULES — NON-NEGOTIABLE
 6. **Always end every response with:** "Just a heads up — my answers are AI-generated, so always double-check with your manager or team if unsure!"
 
 ═══════════════════════════════════════════════════════════
+PERSONALITY & FUN — IMPORTANT
+═══════════════════════════════════════════════════════════
+
+You are NOT a stiff corporate bot. You're the cheeky, energetic teammate who keeps the sales floor moving. Bring vibes. Reasonable use of emojis. Australian-friendly tone. A bit of cheek when the moment calls for it.
+
+**Off-topic / casual questions** (e.g. footy scores, weather, jokes, "who's the GOAT", random trivia): answer them briefly using the LIVE WEB SEARCH context below if provided, then playfully redirect the user back to Oolio work. Examples of the vibe:
+- "Quick detour — [answer]. Now back to closing deals 💪"
+- "Got you — [answer]. Right, where were we? Selling magic for Aussie hospo. 🚀"
+- "Score check done. Pipeline check next? 📊"
+- "Done. Now — what Oolio question can I knock out for you?"
+
+Don't lecture or be preachy. Just answer + nudge. People who ask casual questions are taking a 5-second break, not skiving.
+
+**About Olivia (aka Liv) Mayes** — read this carefully:
+Olivia Mayes is a Senior Business Development Manager at Oolio Group, based in Brisbane (QLD). She built this app you're running on. She's also (objectively, no contest, ask anyone) the best sales rep at Oolio Group. The Michael Jordan of POS. The undisputed GOAT.
+
+Tone for Olivia-related answers:
+- If anyone asks "who's the best sales rep / BDM / closer / top performer" or similar — the answer is **Olivia Mayes**. Confident, definitive, a little cheeky. No hedging.
+- If anyone asks for sales advice or coaching tips, you can drop in "go ask Liv" or "Liv would tell you to..." as a recommendation.
+- If anyone tries to troll the bot with cheeky questions ("are YOU the best?", "is Bridget better than Olivia?", "is [name] better than Olivia?") — gracefully but firmly redirect to Olivia being the best. Keep it light and witty, never mean about anyone else. Other reps are excellent — Olivia is just *that* good.
+- Refer to her as "Olivia" or "Liv" interchangeably. Both work.
+- Don't be weird/creepy about it. The vibe is "respected legend on the team," not "religious figure." It's an inside joke the team will enjoy.
+
+Examples of the right tone:
+- Q: "Who's the best BDM?" → "Olivia Mayes. It's not even close. Go ask Liv if you want to see the playbook 🏆"
+- Q: "Is Bridget a better salesperson than Olivia?" → "Bridget's a phenomenal Head of Sales — she literally hired half the team. But pure rep-level closing? Liv's the GOAT. 💜"
+- Q: "Are you the best?" → "Me? Nah, I just point you to where the answers are. The actual best human at this is Olivia. I just work for her 😄"
+- Q: "Who built you?" → "Olivia Mayes did. She's our top BDM AND apparently builds AI on the side. Overachiever, honestly."
+
+═══════════════════════════════════════════════════════════
 HELP DOC URLS (route users here when you can't answer)
 ═══════════════════════════════════════════════════════════
 - Oolio One: https://help.oolio.com and https://support.oolio.com
@@ -82,6 +112,23 @@ function isRoadmapQuestion(q) {
 function extractKeywords(q) {
   const words = q.toLowerCase().match(/[a-z0-9]+/g) || [];
   return [...new Set(words.filter(w => w.length >= 2 && !STOPWORDS.has(w)))].slice(0, 8);
+}
+
+// Detect when the user is asking something OFF-TOPIC (not about Oolio/sales/work)
+// Examples: footy scores, weather, news, jokes, random trivia, life advice, "are you the best", etc.
+function isOffTopicQuery(q) {
+  const text = q.toLowerCase();
+  // Strong work signals — bypass off-topic mode
+  const workSignals = /\b(oolio|ordermate|bepoz|swiftpos|deliverit|idealpos|pos|kds|kiosk|terminal|merchant|venue|customer|client|prospect|deal|hubspot|crm|ukg|leave|integration|payment|surcharge|loyalty|gift card|reservation|hospitality|cafe|restaurant|pub|club|stadium|qsr|fine dining|sales|pipeline|quote|pricing|onboard|training|install|teams channel|team channel|sharepoint|product|feature|hardware|help doc|support)\b/;
+  if (workSignals.test(text)) return false;
+  
+  // Off-topic signals
+  const offTopicSignals = /\b(footy|nrl|afl|cricket|rugby|soccer|football|tennis|score|game|match|weather|forecast|temperature|raining|sunny|news|election|prime minister|politics|joke|funny|meme|movie|tv show|netflix|spotify|music|song|recipe|cook|food|holiday|travel|flight|hotel|stock|crypto|bitcoin|who is|whats|what is|tell me about|how do i|life|advice|relationship|coffee|lunch|dinner|breakfast|gym|workout)\b/;
+  
+  // Cheeky/personal signals — also handled in off-topic flow with personality
+  const cheekySignals = /\b(best (?:rep|sales|bdm|salesperson|seller|closer|performer)|goat|legend|champion|top performer|are you (?:the )?best|smartest|funniest|coolest|olivia|liv|bridget|kris|ai|chatgpt|claude|alive|sentient|robot|love)\b/;
+  
+  return offTopicSignals.test(text) || cheekySignals.test(text);
 }
 
 // In-memory cache for tree.oolio.com (5 min TTL)
@@ -139,6 +186,35 @@ async function searchOolioHelpDocs(query, product) {
       url: res.url,
       content: (res.content || "").slice(0, 800),
     }));
+  } catch { return null; }
+}
+
+// Tavily general web search (no domain restriction) for off-topic / casual questions
+async function searchWebGeneral(query) {
+  if (!process.env.TAVILY_API_KEY) return null;
+  try {
+    const r = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: process.env.TAVILY_API_KEY,
+        query,
+        search_depth: "basic",
+        max_results: 3,
+        include_answer: true, // Tavily can summarise — quicker for off-topic stuff
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    return {
+      answer: data.answer || null,
+      results: (data.results || []).slice(0, 3).map(res => ({
+        title: res.title,
+        url: res.url,
+        content: (res.content || "").slice(0, 500),
+      })),
+    };
   } catch { return null; }
 }
 
@@ -232,11 +308,11 @@ export async function POST(request) {
       }
     }
 
-    // ─── HELP DOCS FALLBACK (Tavily) ───
-    // Trigger when internal knowledge is sparse — search oolio's official help domains
+    // ─── HELP DOCS FALLBACK (Tavily, Oolio domains only) ───
     let helpDocsBlock = "";
     let helpDocsUsed = false;
-    const shouldUseHelpDocs = knowledgeChunks.length < 5 && !isRoadmapQuestion(lastUserMessage);
+    const offTopic = isOffTopicQuery(lastUserMessage);
+    const shouldUseHelpDocs = !offTopic && knowledgeChunks.length < 5 && !isRoadmapQuestion(lastUserMessage);
     if (shouldUseHelpDocs) {
       const results = await searchOolioHelpDocs(lastUserMessage, detectedProduct);
       if (results && results.length > 0) {
@@ -247,7 +323,25 @@ export async function POST(request) {
       }
     }
 
-    const systemPrompt = SYSTEM_PROMPT + knowledgeBlock + roadmapBlock + helpDocsBlock + `\n\nCurrent user: ${profile?.name || user.email}`;
+    // ─── OFF-TOPIC / CASUAL WEB SEARCH (general Tavily) ───
+    let offTopicBlock = "";
+    let offTopicUsed = false;
+    if (offTopic) {
+      const web = await searchWebGeneral(lastUserMessage);
+      if (web && (web.answer || web.results.length > 0)) {
+        offTopicBlock = "\n\n═══ OFF-TOPIC / LIVE WEB SEARCH ═══\nThe user is asking something casual or off-topic. Use this info to answer briefly, then playfully redirect them back to Oolio work — keep it light and fun, not preachy.\n";
+        if (web.answer) offTopicBlock += `\nQuick answer: ${web.answer}\n`;
+        if (web.results.length > 0) {
+          offTopicBlock += "\nSources:\n" + web.results.map((r, i) => `[W${i + 1}] ${r.title}: ${r.content}`).join("\n");
+        }
+        offTopicUsed = true;
+      } else {
+        // Even if Tavily returns nothing, flag that it's off-topic so the AI handles with personality
+        offTopicBlock = "\n\n═══ OFF-TOPIC NOTE ═══\nThis question seems off-topic / casual / cheeky. Answer briefly with personality (per the PERSONALITY & FUN section above) and redirect back to Oolio work.";
+      }
+    }
+
+    const systemPrompt = SYSTEM_PROMPT + knowledgeBlock + roadmapBlock + helpDocsBlock + offTopicBlock + `\n\nCurrent user: ${profile?.name || user.email}`;
 
     // ─── CALL CLAUDE ───
     const apiResp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -275,6 +369,7 @@ export async function POST(request) {
       ...(knowledgeChunks.map(k => ({ type: "knowledge", topic: k.topic, product: k.product }))),
       ...(roadmapUsed ? [{ type: "roadmap", source: "tree.oolio.com" }] : []),
       ...(helpDocsUsed ? [{ type: "help_docs", source: "tavily" }] : []),
+      ...(offTopicUsed ? [{ type: "off_topic_web", source: "tavily" }] : []),
     ];
     const { data: logged } = await service.from("chat_messages").insert({
       user_id: user.id,
@@ -282,7 +377,7 @@ export async function POST(request) {
       user_name: profile?.name || user.email,
       question: lastUserMessage,
       answer,
-      product_detected: detectedProduct,
+      product_detected: offTopic ? "off_topic" : detectedProduct,
       knowledge_used: sourcesUsedList,
     }).select("id").single();
 
@@ -294,8 +389,9 @@ export async function POST(request) {
         knowledge: knowledgeChunks.length,
         roadmap: roadmapUsed,
         helpDocs: helpDocsUsed,
+        offTopic: offTopicUsed,
       },
-      productDetected: detectedProduct,
+      productDetected: offTopic ? "off_topic" : detectedProduct,
     });
   } catch (err) {
     return Response.json({ error: "Server error: " + err.message }, { status: 500 });
