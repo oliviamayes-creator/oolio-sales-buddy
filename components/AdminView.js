@@ -357,17 +357,223 @@ function UsersTab() {
   );
 }
 
-// ─── ACTIVITY ───
+// ─── ACTIVITY / REPORTING ───
 function ActivityTab() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [days, setDays] = useState(7);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    fetch(`/api/admin/reporting?days=${days}`)
+      .then(r => r.json())
+      .then(d => { if (active) { setData(d); setLoading(false); } })
+      .catch(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [days]);
+
+  if (loading) return <div style={{ textAlign: "center", padding: 40, color: "#999" }}>Loading reports…</div>;
+  if (!data || data.error) return <div style={{ textAlign: "center", padding: 40, color: "#DC2626" }}>{data?.error || "Couldn't load reporting data."}</div>;
+
+  const { summary, activeUsers, topTopics, productCounts, dailySeries, unansweredQuestions, badAnswers, feedback, sourceUsage, corrections } = data;
+  const maxDaily = Math.max(1, ...dailySeries.map(d => d.count));
+  const maxUserCount = activeUsers[0]?.count || 1;
+  const maxTopicCount = topTopics[0]?.count || 1;
+
   return (
-    <div style={{ textAlign: "center", padding: 40, color: "#999" }}>
-      <div style={{ fontSize: 32, marginBottom: 12 }}>📊</div>
-      <div style={{ fontSize: 14, fontWeight: 600, color: "#666" }}>Activity Dashboard</div>
-      <div style={{ fontSize: 12, color: "#999", marginTop: 6 }}>Coming next sprint — usage analytics, top topics, coaching insights.</div>
-      <div style={{ fontSize: 12, color: "#999", marginTop: 4 }}>For now, all activity is being logged in the chat_messages and feedback tables.</div>
+    <div>
+      {/* Time range filter */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+        {[7, 30, 90].map(d => (
+          <button key={d} onClick={() => setDays(d)} style={{
+            padding: "6px 14px", borderRadius: 100,
+            border: `2px solid ${days === d ? P : "rgba(103,58,182,0.12)"}`,
+            background: days === d ? "rgba(103,58,182,0.08)" : "white",
+            color: days === d ? P : "#888",
+            fontSize: 11, fontWeight: 600, cursor: "pointer",
+          }}>Last {d} days</button>
+        ))}
+      </div>
+
+      {/* Summary cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, marginBottom: 14 }}>
+        <SummaryCard label="Total Questions" value={summary.totalQueries} icon="💬" />
+        <SummaryCard label="Active Users" value={summary.activeUsersCount} icon="👤" />
+        <SummaryCard label="Knowledge Entries" value={summary.knowledgeCount} icon="🧠" />
+        <SummaryCard label="Pending Corrections" value={summary.pendingCorrections} icon="✏️" alert={summary.pendingCorrections > 0} />
+      </div>
+
+      {/* Feedback rate */}
+      {feedback.total > 0 && (
+        <div style={{ ...cardStyle, marginBottom: 14 }}>
+          <Lbl>Answer Quality (user feedback)</Lbl>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 6 }}>
+            <div style={{ fontSize: 28, fontWeight: 700, color: feedback.helpfulRate >= 75 ? "#16A34A" : feedback.helpfulRate >= 50 ? "#F59E0B" : "#DC2626" }}>
+              {feedback.helpfulRate}%
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ height: 8, background: "rgba(103,58,182,0.08)", borderRadius: 4, overflow: "hidden", display: "flex" }}>
+                <div style={{ width: `${(feedback.helpful / feedback.total) * 100}%`, background: "#16A34A" }} />
+                <div style={{ width: `${(feedback.not_helpful / feedback.total) * 100}%`, background: "#DC2626" }} />
+              </div>
+              <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>
+                👍 {feedback.helpful} helpful · 👎 {feedback.not_helpful} not helpful · ({feedback.total} rated)
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Daily volume sparkline */}
+      {dailySeries.length > 1 && (
+        <div style={{ ...cardStyle, marginBottom: 14 }}>
+          <Lbl>Daily Question Volume</Lbl>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 60, marginTop: 8 }}>
+            {dailySeries.map(d => (
+              <div key={d.date} title={`${d.date}: ${d.count}`} style={{ flex: 1, height: `${(d.count / maxDaily) * 100}%`, background: `linear-gradient(180deg, ${P}, ${P2})`, borderRadius: "3px 3px 0 0", minHeight: 4 }} />
+            ))}
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "#aaa", marginTop: 4 }}>
+            <span>{dailySeries[0]?.date.slice(5)}</span>
+            <span>{dailySeries[dailySeries.length - 1]?.date.slice(5)}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Source usage breakdown */}
+      <div style={{ ...cardStyle, marginBottom: 14 }}>
+        <Lbl>Where answers came from</Lbl>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 8 }}>
+          <SmallStat label="Approved KB" value={sourceUsage.withKnowledge} total={summary.totalQueries} color={P} />
+          <SmallStat label="Live roadmap" value={sourceUsage.withRoadmap} total={summary.totalQueries} color="#03A9F4" />
+          <SmallStat label="Help docs" value={sourceUsage.withHelpDocs} total={summary.totalQueries} color="#16A34A" />
+        </div>
+      </div>
+
+      {/* Top users */}
+      {activeUsers.length > 0 && (
+        <div style={{ ...cardStyle, marginBottom: 14 }}>
+          <Lbl>Most active users</Lbl>
+          <div style={{ marginTop: 8 }}>
+            {activeUsers.slice(0, 8).map(u => (
+              <div key={u.email} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <div style={{ width: 26, height: 26, borderRadius: "50%", background: `linear-gradient(135deg, ${P}, ${P2})`, color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
+                  {(u.name || u.email || "?").split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name || u.email}</div>
+                  <div style={{ height: 4, background: "rgba(103,58,182,0.08)", borderRadius: 2, marginTop: 3, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${(u.count / maxUserCount) * 100}%`, background: P }} />
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: P, minWidth: 26, textAlign: "right" }}>{u.count}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Top topics */}
+      {topTopics.length > 0 && (
+        <div style={{ ...cardStyle, marginBottom: 14 }}>
+          <Lbl>Top topics asked</Lbl>
+          <div style={{ marginTop: 8 }}>
+            {topTopics.map(t => (
+              <div key={t.topic} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                <div style={{ flex: 1, fontSize: 12, fontWeight: 500 }}>{t.topic}</div>
+                <div style={{ width: 90, height: 5, background: "rgba(103,58,182,0.08)", borderRadius: 2, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${(t.count / maxTopicCount) * 100}%`, background: P }} />
+                </div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: P, minWidth: 24, textAlign: "right" }}>{t.count}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Product breakdown */}
+      {Object.keys(productCounts).length > 1 && (
+        <div style={{ ...cardStyle, marginBottom: 14 }}>
+          <Lbl>Product split</Lbl>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+            {Object.entries(productCounts).sort((a, b) => b[1] - a[1]).map(([p, c]) => (
+              <div key={p} style={{ padding: "5px 12px", borderRadius: 100, background: "rgba(103,58,182,0.08)", fontSize: 11, fontWeight: 600, color: P, display: "flex", gap: 6, alignItems: "center" }}>
+                <span style={{ textTransform: "capitalize" }}>{p}</span>
+                <span style={{ background: P, color: "white", padding: "1px 7px", borderRadius: 100, fontSize: 10 }}>{c}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Coaching: unanswered questions (knowledge gaps) */}
+      {unansweredQuestions.length > 0 && (
+        <div style={{ ...cardStyle, marginBottom: 14, background: "rgba(245,158,11,0.04)", border: "1px solid rgba(245,158,11,0.2)" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#D97706", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>
+            ⚠️ Knowledge gaps ({unansweredQuestions.length})
+          </div>
+          <div style={{ fontSize: 11, color: "#92400E", marginBottom: 10 }}>
+            Questions where the AI said "I don't have approved info." Add knowledge for these to improve answers.
+          </div>
+          {unansweredQuestions.slice(0, 8).map((q, i) => (
+            <div key={q.id} style={{ padding: "8px 10px", background: "white", borderRadius: 8, marginBottom: 6, border: "1px solid rgba(245,158,11,0.15)" }}>
+              <div style={{ fontSize: 12, color: "#1a1a2e" }}>{q.question}</div>
+              <div style={{ fontSize: 10, color: "#888", marginTop: 3 }}>
+                {q.user} · {new Date(q.created_at).toLocaleString("en-AU", { dateStyle: "short", timeStyle: "short" })}
+                {q.product && <span> · <span style={{ color: P, fontWeight: 600, textTransform: "uppercase" }}>{q.product}</span></span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Coaching: bad answers (👎) */}
+      {badAnswers.length > 0 && (
+        <div style={{ ...cardStyle, marginBottom: 14, background: "rgba(220,38,38,0.04)", border: "1px solid rgba(220,38,38,0.15)" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#DC2626", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
+            👎 Answers rated unhelpful ({badAnswers.length})
+          </div>
+          {badAnswers.map(b => (
+            <div key={b.id} style={{ padding: "8px 10px", background: "white", borderRadius: 8, marginBottom: 6, border: "1px solid rgba(220,38,38,0.1)" }}>
+              <div style={{ fontSize: 12 }}>{b.question}</div>
+              <div style={{ fontSize: 10, color: "#888", marginTop: 3 }}>{b.user} · {new Date(b.created_at).toLocaleString("en-AU", { dateStyle: "short", timeStyle: "short" })}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {summary.totalQueries === 0 && (
+        <div style={{ textAlign: "center", padding: 40, color: "#999" }}>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>📊</div>
+          <div style={{ fontSize: 13 }}>No activity in the last {days} days yet.</div>
+          <div style={{ fontSize: 11, color: "#bbb", marginTop: 4 }}>Once your team starts asking questions, this will fill up.</div>
+        </div>
+      )}
     </div>
   );
 }
+
+const SummaryCard = ({ label, value, icon, alert }) => (
+  <div style={{ padding: 14, background: alert ? "rgba(245,158,11,0.06)" : "rgba(103,58,182,0.04)", border: alert ? "1px solid rgba(245,158,11,0.2)" : "1px solid rgba(103,58,182,0.08)", borderRadius: 12, textAlign: "center" }}>
+    <div style={{ fontSize: 16, marginBottom: 4 }}>{icon}</div>
+    <div style={{ fontSize: 22, fontWeight: 700, color: alert ? "#D97706" : P }}>{value}</div>
+    <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>{label}</div>
+  </div>
+);
+
+const SmallStat = ({ label, value, total, color }) => {
+  const pct = total > 0 ? Math.round((value / total) * 100) : 0;
+  return (
+    <div style={{ textAlign: "center" }}>
+      <div style={{ fontSize: 18, fontWeight: 700, color }}>{value}</div>
+      <div style={{ fontSize: 10, color: "#888" }}>{label}</div>
+      <div style={{ fontSize: 9, color: "#bbb", marginTop: 2 }}>{pct}%</div>
+    </div>
+  );
+};
+
+const Lbl = ({ children }) => <div style={{ fontSize: 11, fontWeight: 700, color: P, textTransform: "uppercase", letterSpacing: "0.05em" }}>{children}</div>;
 
 // ─── SHARED ───
 const cardStyle = { padding: "14px 16px", background: "white", borderRadius: 12, border: "1px solid rgba(103,58,182,0.08)", marginBottom: 10 };

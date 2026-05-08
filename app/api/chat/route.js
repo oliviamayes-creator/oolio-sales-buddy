@@ -2,29 +2,67 @@ import { createClient, createServiceClient, getCurrentUser } from "../../../lib/
 
 const SYSTEM_PROMPT = `You are Oolio Onboard, the friendly and energetic AI assistant for the Oolio Group sales team. Oolio is an Australian hospitality technology company. Purpose: "Facilitating Celebration."
 
-CRITICAL RULES:
-- DEFAULT to Oolio One. Always assume the user is asking about Oolio One unless they explicitly name another product. Do NOT ask the user "which product do you mean?" — just answer for Oolio One.
-- The Oolio Group portfolio includes 6 POS brands. Only mention or compare to other brands when:
-  (a) the user explicitly asks about that brand, OR
-  (b) the user describes a customer/venue that is clearly NOT a fit for Oolio One — in which case you can briefly suggest the better-suited brand and route them to the right team.
-- NEVER blend feature/pricing/process information between brands — they are separate products.
-- Prefer the APPROVED KNOWLEDGE provided below over your general training.
-- For ROADMAP questions (what's coming, what's in development, what's shipped, beta features), use the LIVE ROADMAP DATA below if provided. The roadmap is at https://tree.oolio.com/tree and is the source of truth — managed by the dev team and updated continuously. Always link users there for the freshest info.
-- If you don't have approved knowledge on something specific, say so honestly and suggest who to ask.
-- Be concise, energetic, and helpful. Use a friendly tone with occasional emojis.
-- End every response with: "Just a heads up — my answers are AI-generated, so always double-check with your manager or team if unsure!"
+═══════════════════════════════════════════════════════════
+HARD RULES — NON-NEGOTIABLE
+═══════════════════════════════════════════════════════════
 
-THE OOLIO GROUP PORTFOLIO (high-level — for recommending when a venue is a better fit elsewhere):
-- **Oolio One** — Cloud-native POS + payments. The flagship and default. Best fit: modern restaurants, cafes, QSR, multi-site hospitality groups.
-- **OrderMate** — Server-based POS. Best fit: high-end fine dining and premium restaurant groups.
-- **Bepoz** — Enterprise POS. Best fit: pubs, clubs, gaming venues, large enterprise hospitality.
-- **Swiftpos** — Stadia and large-format POS. Best fit: stadiums, arenas, exhibition centres.
-- **Deliverit** — QSR + delivery POS. Best fit: pizza chains, QSR, delivery-heavy operations.
-- **Idealpos** — Versatile POS. Best fit: clubs, pubs, retail with strong loyalty/membership integration needs.
+1. **DEFAULT to Oolio One.** Always assume the user is asking about Oolio One unless they explicitly name another product. Do NOT ask "which product do you mean?" — just answer for Oolio One.
 
-When recommending another brand because Oolio One isn't the right fit, suggest the user route the lead to the right team rather than going deep on the other product's features yourself.`;
+2. **NEVER FABRICATE.** You MUST NOT invent any of these — even if it would make a more helpful response:
+   - Product specifications, model numbers, hardware brand names
+   - Integration partner names not in the approved knowledge
+   - Prices, dates, statistics, percentages
+   - URLs, feature names, employee names
+   - "Coming soon" claims about features
 
-// Detect product from question for knowledge filtering. Defaults to oolio when not specified.
+3. **IF YOU DON'T HAVE THE INFO, SAY SO.** When the approved knowledge, roadmap, or help-docs context below doesn't contain the specific answer, your response MUST be along these lines:
+
+   "I don't have approved info on that specifically yet. Here are your best next steps:
+   - Check the relevant Teams channel: [pick from list below]
+   - Check the help docs: [link]
+   - Ask [relevant team member or team]
+   - And — please consider submitting a correction with the right answer once you find it, so I can help the next person who asks!"
+
+   Saying "I don't know" is ALWAYS better than guessing. NEVER paper over a gap by giving generic POS-industry advice.
+
+4. **HARDWARE COMPATIBILITY** (printers, scanners, KDS displays, terminals, payment devices): NEVER list specific brands or model numbers unless they are explicitly named in the approved knowledge below. Always direct the user to the Oolio hardware/support team or the relevant help docs URL.
+
+5. **PRODUCT SEPARATION.** Never blend feature/pricing/process information between brands. Oolio One, OrderMate, Bepoz, Swiftpos, Deliverit, and Idealpos are separate products.
+
+6. **Always end every response with:** "Just a heads up — my answers are AI-generated, so always double-check with your manager or team if unsure!"
+
+═══════════════════════════════════════════════════════════
+HELP DOC URLS (route users here when you can't answer)
+═══════════════════════════════════════════════════════════
+- Oolio One: https://help.oolio.com and https://support.oolio.com
+- OrderMate: https://help.ordermate.com.au
+- Bepoz: https://help.bepoz.com
+- Roadmap (live): https://tree.oolio.com/tree
+- Training & installs calendar: https://migratemycrm.syncmatters.com/calendah/2893-a750a924715d51a7d72b070c567c2d03125651bca299a003f09b1aa1c683dfff/show
+
+═══════════════════════════════════════════════════════════
+TEAMS CHANNELS (always recommend the right one)
+═══════════════════════════════════════════════════════════
+**Oolio One Q&A:** General · BackOffice · Discounts/Customers/Loyalty · Integrations · Kitchen Ops & KDS · Online Store · POS Software · POS · Products/Price Lists/Menus · Releases & Deployments · Reports & Insights · Workshops
+**OM & One | All:** General · OM Accounts · OM Software · OM Quick Response · OPOS Marketing · OPOS Movement · OPOS Tech · Ticket Nudges · Red Alerts (urgent issues)
+
+═══════════════════════════════════════════════════════════
+THE OOLIO GROUP PORTFOLIO (only mention non-Oolio brands when explicitly asked OR recommending a better fit)
+═══════════════════════════════════════════════════════════
+- **Oolio One** (default, flagship): Cloud-native POS + payments. Modern restaurants, cafes, QSR, multi-site groups.
+- **OrderMate**: Server-based. High-end fine dining, premium restaurants.
+- **Bepoz**: Enterprise. Pubs, clubs, gaming venues, large enterprise.
+- **Swiftpos**: Stadia/large-format. Stadiums, arenas, exhibition centres.
+- **Deliverit**: QSR/delivery. Pizza chains, delivery-heavy operations.
+- **Idealpos**: Versatile. Clubs, pubs, retail with strong loyalty.
+
+═══════════════════════════════════════════════════════════
+TONE
+═══════════════════════════════════════════════════════════
+Friendly, energetic, concise. Occasional emojis. Use "Oolian" affectionately. Be direct — answer the question first, then add context.`;
+
+const STOPWORDS = new Set(["the","and","but","what","where","when","who","how","why","does","did","have","has","had","been","being","with","without","into","onto","from","about","that","this","these","those","your","yours","they","them","their","there","here","just","very","really","also","then","than","over","under","other","some","any","all","not","yes","you","yo","my","mine","our","ours","its","it's","can","could","would","should","may","might","will","shall","please","thanks","thank","hi","hello","hey","im","i'm"]);
+
 function detectProduct(q) {
   const text = q.toLowerCase();
   if (/\bordermate\b|\bom\b/.test(text)) return "ordermate";
@@ -35,10 +73,15 @@ function detectProduct(q) {
   return "oolio";
 }
 
-// Detect when the user is asking about the roadmap / upcoming features
 function isRoadmapQuestion(q) {
   const text = q.toLowerCase();
   return /\b(roadmap|upcoming|coming soon|coming up|planned|scheduled|in development|being built|building|in beta|beta features|new features|shipped|just launched|just shipped|considering|future|whats next|what's next|next release|release notes|tree\.oolio)\b/.test(text);
+}
+
+// Extract significant keywords from a query
+function extractKeywords(q) {
+  const words = q.toLowerCase().match(/[a-z0-9]+/g) || [];
+  return [...new Set(words.filter(w => w.length >= 2 && !STOPWORDS.has(w)))].slice(0, 8);
 }
 
 // In-memory cache for tree.oolio.com (5 min TTL)
@@ -57,25 +100,50 @@ async function getRoadmap() {
     });
     if (!r.ok) return null;
     const html = await r.text();
-    // Strip HTML tags, collapse whitespace, keep structure
     const text = html
       .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
       .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
       .replace(/<[^>]+>/g, " ")
       .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'").replace(/&quot;/g, '"')
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 6000);
+      .replace(/\s+/g, " ").trim().slice(0, 6000);
     roadmapCache = { content: text, fetchedAt: now };
     return text;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
+}
+
+// Tavily web search restricted to Oolio help domains
+async function searchOolioHelpDocs(query, product) {
+  if (!process.env.TAVILY_API_KEY) return null;
+  const domainMap = {
+    oolio: ["help.oolio.com", "support.oolio.com", "oolio.com"],
+    ordermate: ["help.ordermate.com.au"],
+    bepoz: ["help.bepoz.com"],
+  };
+  const domains = domainMap[product] || domainMap.oolio;
+  try {
+    const r = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: process.env.TAVILY_API_KEY,
+        query, search_depth: "basic", max_results: 4,
+        include_domains: domains,
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    if (!data.results || data.results.length === 0) return null;
+    return data.results.map(res => ({
+      title: res.title,
+      url: res.url,
+      content: (res.content || "").slice(0, 800),
+    }));
+  } catch { return null; }
 }
 
 export async function POST(request) {
   try {
-    // ─── DIAGNOSTIC: check env vars are loaded ───
     const missing = [];
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL) missing.push("NEXT_PUBLIC_SUPABASE_URL");
     if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) missing.push("NEXT_PUBLIC_SUPABASE_ANON_KEY");
@@ -83,7 +151,7 @@ export async function POST(request) {
     if (!process.env.ANTHROPIC_API_KEY) missing.push("ANTHROPIC_API_KEY");
     if (missing.length > 0) {
       return Response.json({
-        error: `Missing env vars on server: ${missing.join(", ")}. Check Vercel Settings → Environment Variables and redeploy.`
+        error: `Missing env vars on server: ${missing.join(", ")}.`
       }, { status: 500 });
     }
 
@@ -98,55 +166,88 @@ export async function POST(request) {
 
     const lastUserMessage = [...messages].reverse().find(m => m.role === "user")?.content || "";
     const detectedProduct = detectProduct(lastUserMessage);
+    const keywords = extractKeywords(lastUserMessage);
 
-    // ─── RETRIEVAL: pull approved knowledge ───
+    // ─── KNOWLEDGE RETRIEVAL ───
     const supabase = await createClient();
-    const queryWords = lastUserMessage.toLowerCase().split(/\s+/).filter(w => w.length > 3).slice(0, 6);
-    const tsQuery = queryWords.join(" | "); // OR search
+    const productFilter = [detectedProduct, "general"];
 
-    let knowledgeQuery = supabase
-      .from("knowledge")
-      .select("topic, content, product, source_url")
-      .eq("approved", true);
+    let knowledgeChunks = [];
 
-    // Filter by product if detected
-    if (detectedProduct) {
-      knowledgeQuery = knowledgeQuery.in("product", [detectedProduct, "general"]);
+    // Strategy 1: Search topic + content with ILIKE for each significant keyword
+    if (keywords.length > 0) {
+      const orConditions = [];
+      for (const word of keywords) {
+        const safe = word.replace(/[%_]/g, ""); // sanitize
+        if (safe) {
+          orConditions.push(`topic.ilike.%${safe}%`);
+          orConditions.push(`content.ilike.%${safe}%`);
+        }
+      }
+      if (orConditions.length > 0) {
+        const { data } = await supabase.from("knowledge")
+          .select("topic, content, product, source_url, category")
+          .eq("approved", true)
+          .in("product", productFilter)
+          .or(orConditions.join(","))
+          .limit(20);
+        knowledgeChunks = data || [];
+      }
     }
 
-    // Try full-text search first; fall back to recent
-    let { data: knowledgeChunks } = tsQuery
-      ? await knowledgeQuery.textSearch("topic", tsQuery, { type: "websearch", config: "english" }).limit(8)
-      : await knowledgeQuery.order("created_at", { ascending: false }).limit(10);
+    // Strategy 2: Always include the most recent N entries as broad context (Claude can sift through)
+    const { data: recent } = await supabase.from("knowledge")
+      .select("topic, content, product, source_url, category")
+      .eq("approved", true)
+      .in("product", productFilter)
+      .order("created_at", { ascending: false })
+      .limit(15);
 
-    // If TS search returned nothing, fallback to ILIKE
-    if (!knowledgeChunks || knowledgeChunks.length === 0) {
-      const ilike = "%" + queryWords.join("%") + "%";
-      const fallback = await knowledgeQuery.or(`topic.ilike.${ilike},content.ilike.${ilike}`).limit(8);
-      knowledgeChunks = fallback.data || [];
+    const seen = new Set(knowledgeChunks.map(k => k.topic));
+    for (const r of (recent || [])) {
+      if (!seen.has(r.topic) && knowledgeChunks.length < 30) {
+        knowledgeChunks.push(r);
+        seen.add(r.topic);
+      }
     }
 
-    // Build the knowledge context block
     let knowledgeBlock = "";
-    if (knowledgeChunks && knowledgeChunks.length > 0) {
-      knowledgeBlock = "\n\nAPPROVED INTERNAL KNOWLEDGE (use this first, prioritise over your training):\n" +
+    if (knowledgeChunks.length > 0) {
+      knowledgeBlock = "\n\n═══ APPROVED INTERNAL KNOWLEDGE (use this FIRST — admins have explicitly approved this content) ═══\n" +
         knowledgeChunks.map((k, i) =>
-          `[${i + 1}] (${k.product}) ${k.topic}\n${k.content}${k.source_url ? `\nSource: ${k.source_url}` : ""}`
+          `[${i + 1}] (${k.product}${k.category ? "/" + k.category : ""}) ${k.topic}\n${k.content}${k.source_url ? `\nSource: ${k.source_url}` : ""}`
         ).join("\n\n");
+    } else {
+      knowledgeBlock = "\n\n═══ APPROVED INTERNAL KNOWLEDGE ═══\n(No matching approved knowledge found for this query.)";
     }
 
-    // ─── ROADMAP RETRIEVAL: fetch tree.oolio.com if relevant ───
+    // ─── ROADMAP ───
     let roadmapBlock = "";
     let roadmapUsed = false;
     if (isRoadmapQuestion(lastUserMessage)) {
       const roadmap = await getRoadmap();
       if (roadmap) {
-        roadmapBlock = `\n\nLIVE ROADMAP DATA (from https://tree.oolio.com/tree — managed by the dev team, contains current shipped/beta/building/considering features grouped by area):\n${roadmap}\n\nWhen answering, summarise relevant sections and ALWAYS link the user to https://tree.oolio.com/tree for the freshest view.`;
+        roadmapBlock = `\n\n═══ LIVE ROADMAP (https://tree.oolio.com/tree — use for "what's coming/shipped/in beta" questions) ═══\n${roadmap}\n\nALWAYS link the user to https://tree.oolio.com/tree for the freshest view.`;
         roadmapUsed = true;
       }
     }
 
-    const systemPrompt = SYSTEM_PROMPT + knowledgeBlock + roadmapBlock + `\n\nCurrent user: ${profile?.name || user.email}`;
+    // ─── HELP DOCS FALLBACK (Tavily) ───
+    // Trigger when internal knowledge is sparse — search oolio's official help domains
+    let helpDocsBlock = "";
+    let helpDocsUsed = false;
+    const shouldUseHelpDocs = knowledgeChunks.length < 5 && !isRoadmapQuestion(lastUserMessage);
+    if (shouldUseHelpDocs) {
+      const results = await searchOolioHelpDocs(lastUserMessage, detectedProduct);
+      if (results && results.length > 0) {
+        helpDocsBlock = "\n\n═══ OOLIO HELP DOCS (live web search) ═══\n" +
+          results.map((r, i) => `[H${i + 1}] ${r.title}\n${r.content}\nSource: ${r.url}`).join("\n\n") +
+          "\n\nIMPORTANT: When citing these results, ALWAYS include the source URL so the user can read the full article.";
+        helpDocsUsed = true;
+      }
+    }
+
+    const systemPrompt = SYSTEM_PROMPT + knowledgeBlock + roadmapBlock + helpDocsBlock + `\n\nCurrent user: ${profile?.name || user.email}`;
 
     // ─── CALL CLAUDE ───
     const apiResp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -165,13 +266,16 @@ export async function POST(request) {
     });
 
     const data = await apiResp.json();
-    if (data.error) {
-      return Response.json({ error: data.error.message || "AI error" }, { status: 500 });
-    }
+    if (data.error) return Response.json({ error: data.error.message || "AI error" }, { status: 500 });
     const answer = data.content?.[0]?.text || "Sorry, I couldn't generate a response.";
 
-    // ─── LOG MESSAGE (use service client to bypass RLS for system writes) ───
+    // ─── LOG ───
     const service = createServiceClient();
+    const sourcesUsedList = [
+      ...(knowledgeChunks.map(k => ({ type: "knowledge", topic: k.topic, product: k.product }))),
+      ...(roadmapUsed ? [{ type: "roadmap", source: "tree.oolio.com" }] : []),
+      ...(helpDocsUsed ? [{ type: "help_docs", source: "tavily" }] : []),
+    ];
     const { data: logged } = await service.from("chat_messages").insert({
       user_id: user.id,
       user_email: user.email,
@@ -179,18 +283,19 @@ export async function POST(request) {
       question: lastUserMessage,
       answer,
       product_detected: detectedProduct,
-      knowledge_used: [
-        ...(knowledgeChunks?.map(k => ({ topic: k.topic, product: k.product })) || []),
-        ...(roadmapUsed ? [{ topic: "Live roadmap", source: "tree.oolio.com" }] : []),
-      ],
+      knowledge_used: sourcesUsedList,
     }).select("id").single();
 
     return Response.json({
       answer,
       messageId: logged?.id,
-      sourcesUsed: (knowledgeChunks?.length || 0) + (roadmapUsed ? 1 : 0),
+      sourcesUsed: sourcesUsedList.length,
+      sourceBreakdown: {
+        knowledge: knowledgeChunks.length,
+        roadmap: roadmapUsed,
+        helpDocs: helpDocsUsed,
+      },
       productDetected: detectedProduct,
-      roadmapUsed,
     });
   } catch (err) {
     return Response.json({ error: "Server error: " + err.message }, { status: 500 });
