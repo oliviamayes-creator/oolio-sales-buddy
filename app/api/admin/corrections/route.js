@@ -1,9 +1,9 @@
-import { createServiceClient, getCurrentUser } from "../../../../lib/supabase-server";
+import { createServiceClient, getCurrentUser, isAdminOrOwner } from "../../../../lib/supabase-server";
 
 async function requireAdmin() {
   const auth = await getCurrentUser();
   if (!auth) return { error: "Not authenticated", status: 401 };
-  if (auth.profile?.role !== "admin") return { error: "Admin only", status: 403 };
+  if (!isAdminOrOwner(auth.profile)) return { error: "Admin only", status: 403 };
   return { auth };
 }
 
@@ -26,23 +26,19 @@ export async function PATCH(request) {
   if (!correctionId || !["approve", "reject"].includes(action)) {
     return Response.json({ error: "Invalid input" }, { status: 400 });
   }
-  
+
   const service = createServiceClient();
   const { data: correction } = await service.from("corrections").select("*").eq("id", correctionId).single();
   if (!correction) return Response.json({ error: "Correction not found" }, { status: 404 });
 
-  // If approved → create a new knowledge entry
+  // If approved → create a new Brain entry
   if (action === "approve") {
-    await service.from("knowledge").insert({
-      topic: editedTopic?.trim() || correction.original_question || "User correction",
+    await service.from("brain").insert({
+      title: editedTopic?.trim() || correction.original_question?.slice(0, 100) || "User correction",
       content: editedAnswer?.trim() || correction.corrected_answer,
-      product: correction.product,
-      category: correction.category,
-      source_type: "user_correction",
       source_url: correction.source_url,
-      approved: true,
       created_by: correction.submitted_by,
-      approved_by: check.auth.user.id,
+      updated_by: check.auth.user.id,
     });
   }
 

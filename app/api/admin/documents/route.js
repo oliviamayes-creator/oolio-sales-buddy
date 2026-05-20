@@ -1,9 +1,9 @@
-import { createServiceClient, getCurrentUser } from "../../../../lib/supabase-server";
+import { createServiceClient, getCurrentUser, isAdminOrOwner } from "../../../../lib/supabase-server";
 
 async function requireAdmin() {
   const auth = await getCurrentUser();
   if (!auth) return { error: "Not authenticated", status: 401 };
-  if (auth.profile?.role !== "admin") return { error: "Admin only", status: 403 };
+  if (!isAdminOrOwner(auth.profile)) return { error: "Admin only", status: 403 };
   return { auth };
 }
 

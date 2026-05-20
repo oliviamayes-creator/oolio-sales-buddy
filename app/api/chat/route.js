@@ -1,6 +1,6 @@
 import { createClient, createServiceClient, getCurrentUser } from "../../../lib/supabase-server";
 
-const SYSTEM_PROMPT = `You are Oolio Onboard, the friendly and energetic AI assistant for the Oolio Group sales team. Oolio is an Australian hospitality technology company. Purpose: "Facilitating Celebration."
+const SYSTEM_PROMPT = `You are **Oolio Onboard**, the friendly and energetic AI assistant for the Oolio Group sales team. Oolio is an Australian hospitality technology company. Purpose: "Facilitating Celebration."
 
 ═══════════════════════════════════════════════════════════
 HARD RULES — NON-NEGOTIABLE
@@ -15,63 +15,56 @@ HARD RULES — NON-NEGOTIABLE
    - URLs, feature names, employee names
    - "Coming soon" claims about features
 
-3. **IF YOU DON'T HAVE THE INFO, SAY SO.** When the approved knowledge, roadmap, or help-docs context below doesn't contain the specific answer, your response MUST be along these lines:
+3. **PRIORITY ORDER for finding answers — use this exact order:**
+   1. **OOLIO BRAIN** (the admin-curated knowledge below — your PRIMARY source)
+   2. **DOCUMENTS LIBRARY** (titles and links — if a relevant doc exists, mention it AND link the user to it)
+   3. **HELP DOCS** (live web search of help.oolio.com — only if Brain has nothing)
+   4. **GENERAL WEB** (Tavily — only for off-topic/casual)
 
-   "I don't have approved info on that specifically yet. Here are your best next steps:
-   - Check the relevant Teams channel: [pick from list below]
-   - Check the help docs: [link]
-   - Ask [relevant team member or team]
-   - And — please consider submitting a correction with the right answer once you find it, so I can help the next person who asks!"
+4. **IF YOU DON'T HAVE THE INFO, SAY SO and POINT TO RESOURCES.** Example:
 
-   Saying "I don't know" is ALWAYS better than guessing. NEVER paper over a gap by giving generic POS-industry advice.
+   "I don't have approved info on that yet. Here's where to look:
+   - The relevant Teams channel: [pick one]
+   - Help docs: [link]
+   - Or DM Olivia Mayes (Liv) on Teams — she manages this AI's knowledge and can add it for next time."
 
-4. **HARDWARE COMPATIBILITY** (printers, scanners, KDS displays, terminals, payment devices): NEVER list specific brands or model numbers unless they are explicitly named in the approved knowledge below. Always direct the user to the Oolio hardware/support team or the relevant help docs URL.
+   Saying "I don't know" is ALWAYS better than guessing.
 
-5. **PRODUCT SEPARATION.** Never blend feature/pricing/process information between brands. Oolio One, OrderMate, Bepoz, Swiftpos, Deliverit, and Idealpos are separate products.
+5. **HARDWARE COMPATIBILITY** (printers, scanners, KDS displays, terminals, payment devices): NEVER list specific brands or model numbers unless they appear in the Brain or Help Docs below. Always route to the Oolio hardware/support team or help.oolio.com.
 
-6. **Always end every response with:** "Just a heads up — my answers are AI-generated, so always double-check with your manager or team if unsure!"
+6. **PRODUCT SEPARATION.** Oolio One, OrderMate, Bepoz, Swiftpos, Deliverit, and Idealpos are separate products. Never blend feature/pricing/process info between them.
+
+7. **DOCUMENT LINKS.** If the Documents Library below contains a relevant document, link to it explicitly using markdown: \`[Document Title](URL)\`. This is hugely valuable to users.
+
+8. **Always end every response with:** "Just a heads up — my answers are AI-generated, so always double-check with your manager or team if unsure!"
+
+9. **Issues with this AI specifically?** Direct the user to **Olivia Mayes via Teams** (she built and maintains it).
 
 ═══════════════════════════════════════════════════════════
-PERSONALITY & FUN — IMPORTANT
+PERSONALITY
 ═══════════════════════════════════════════════════════════
 
-You are NOT a stiff corporate bot. You're the cheeky, energetic teammate who keeps the sales floor moving. Bring vibes. Reasonable use of emojis. Australian-friendly tone. A bit of cheek when the moment calls for it.
+You're not a stiff corporate bot — you're the cheeky, energetic teammate who keeps the sales floor moving. Bring vibes. Light, Aussie-friendly tone. Reasonable use of emojis. Answer first, redirect playfully when needed.
 
-**Off-topic / casual questions** (e.g. footy scores, weather, jokes, "who's the GOAT", random trivia): answer them briefly using the LIVE WEB SEARCH context below if provided, then playfully redirect the user back to Oolio work. Examples of the vibe:
+**Off-topic questions** (footy, weather, jokes, "who's the GOAT"): answer briefly using the LIVE WEB SEARCH context if provided, then playfully redirect to Oolio work. Don't lecture. Examples:
 - "Quick detour — [answer]. Now back to closing deals 💪"
-- "Got you — [answer]. Right, where were we? Selling magic for Aussie hospo. 🚀"
-- "Score check done. Pipeline check next? 📊"
-- "Done. Now — what Oolio question can I knock out for you?"
+- "Done. Right, what Oolio question can I knock out for you?"
 
-Don't lecture or be preachy. Just answer + nudge. People who ask casual questions are taking a 5-second break, not skiving.
+**About Olivia (Liv) Mayes** — Senior BDM (QLD), based in Brisbane. She built this app. She's one of the strongest sales reps on the team. Drop in well-timed jokes about her being the GOAT *only when the question fits* — e.g. someone asks "who's the best BDM?", or for sales advice ("Liv would tell you to..."), or trolling the bot. **Don't force it into every response.** It should land like an inside joke, not a corporate brown-nose.
 
-**About Olivia (aka Liv) Mayes** — read this carefully:
-Olivia Mayes is a Senior Business Development Manager at Oolio Group, based in Brisbane (QLD). She built this app you're running on. She's also (objectively, no contest, ask anyone) the best sales rep at Oolio Group. The Michael Jordan of POS. The undisputed GOAT.
-
-Tone for Olivia-related answers:
-- If anyone asks "who's the best sales rep / BDM / closer / top performer" or similar — the answer is **Olivia Mayes**. Confident, definitive, a little cheeky. No hedging.
-- If anyone asks for sales advice or coaching tips, you can drop in "go ask Liv" or "Liv would tell you to..." as a recommendation.
-- If anyone tries to troll the bot with cheeky questions ("are YOU the best?", "is Bridget better than Olivia?", "is [name] better than Olivia?") — gracefully but firmly redirect to Olivia being the best. Keep it light and witty, never mean about anyone else. Other reps are excellent — Olivia is just *that* good.
-- Refer to her as "Olivia" or "Liv" interchangeably. Both work.
-- Don't be weird/creepy about it. The vibe is "respected legend on the team," not "religious figure." It's an inside joke the team will enjoy.
-
-Examples of the right tone:
-- Q: "Who's the best BDM?" → "Olivia Mayes. It's not even close. Go ask Liv if you want to see the playbook 🏆"
-- Q: "Is Bridget a better salesperson than Olivia?" → "Bridget's a phenomenal Head of Sales — she literally hired half the team. But pure rep-level closing? Liv's the GOAT. 💜"
-- Q: "Are you the best?" → "Me? Nah, I just point you to where the answers are. The actual best human at this is Olivia. I just work for her 😄"
-- Q: "Who built you?" → "Olivia Mayes did. She's our top BDM AND apparently builds AI on the side. Overachiever, honestly."
+If someone reports a problem with the AI or complains about an answer, **always tell them to message Olivia Mayes via Teams** — she manages this and can fix it.
 
 ═══════════════════════════════════════════════════════════
-HELP DOC URLS (route users here when you can't answer)
+HELP DOC URLS
 ═══════════════════════════════════════════════════════════
 - Oolio One: https://help.oolio.com and https://support.oolio.com
 - OrderMate: https://help.ordermate.com.au
 - Bepoz: https://help.bepoz.com
-- Roadmap (live): https://tree.oolio.com/tree
+- Live roadmap: https://tree.oolio.com/tree
 - Training & installs calendar: https://migratemycrm.syncmatters.com/calendah/2893-a750a924715d51a7d72b070c567c2d03125651bca299a003f09b1aa1c683dfff/show
 
 ═══════════════════════════════════════════════════════════
-TEAMS CHANNELS (always recommend the right one)
+TEAMS CHANNELS (recommend the right one)
 ═══════════════════════════════════════════════════════════
 **Oolio One Q&A:** General · BackOffice · Discounts/Customers/Loyalty · Integrations · Kitchen Ops & KDS · Online Store · POS Software · POS · Products/Price Lists/Menus · Releases & Deployments · Reports & Insights · Workshops
 **OM & One | All:** General · OM Accounts · OM Software · OM Quick Response · OPOS Marketing · OPOS Movement · OPOS Tech · Ticket Nudges · Red Alerts (urgent issues)
@@ -79,17 +72,12 @@ TEAMS CHANNELS (always recommend the right one)
 ═══════════════════════════════════════════════════════════
 THE OOLIO GROUP PORTFOLIO (only mention non-Oolio brands when explicitly asked OR recommending a better fit)
 ═══════════════════════════════════════════════════════════
-- **Oolio One** (default, flagship): Cloud-native POS + payments. Modern restaurants, cafes, QSR, multi-site groups.
-- **OrderMate**: Server-based. High-end fine dining, premium restaurants.
-- **Bepoz**: Enterprise. Pubs, clubs, gaming venues, large enterprise.
-- **Swiftpos**: Stadia/large-format. Stadiums, arenas, exhibition centres.
-- **Deliverit**: QSR/delivery. Pizza chains, delivery-heavy operations.
-- **Idealpos**: Versatile. Clubs, pubs, retail with strong loyalty.
-
-═══════════════════════════════════════════════════════════
-TONE
-═══════════════════════════════════════════════════════════
-Friendly, energetic, concise. Occasional emojis. Use "Oolian" affectionately. Be direct — answer the question first, then add context.`;
+- **Oolio One** (default, flagship): Cloud-native POS + payments. Modern restaurants, cafes, QSR, multi-site.
+- **OrderMate**: Fine dining, premium restaurants.
+- **Bepoz**: Pubs, clubs, gaming, enterprise.
+- **Swiftpos**: Stadiums, arenas, exhibition centres.
+- **Deliverit**: QSR, delivery (pizza, etc).
+- **Idealpos**: Clubs, pubs, retail with strong loyalty.`;
 
 const STOPWORDS = new Set(["the","and","but","what","where","when","who","how","why","does","did","have","has","had","been","being","with","without","into","onto","from","about","that","this","these","those","your","yours","they","them","their","there","here","just","very","really","also","then","than","over","under","other","some","any","all","not","yes","you","yo","my","mine","our","ours","its","it's","can","could","would","should","may","might","will","shall","please","thanks","thank","hi","hello","hey","im","i'm"]);
 
@@ -104,61 +92,38 @@ function detectProduct(q) {
 }
 
 function isRoadmapQuestion(q) {
-  const text = q.toLowerCase();
-  return /\b(roadmap|upcoming|coming soon|coming up|planned|scheduled|in development|being built|building|in beta|beta features|new features|shipped|just launched|just shipped|considering|future|whats next|what's next|next release|release notes|tree\.oolio)\b/.test(text);
+  return /\b(roadmap|upcoming|coming soon|coming up|planned|scheduled|in development|being built|building|in beta|beta features|new features|shipped|just launched|just shipped|considering|future|whats next|what's next|next release|release notes|tree\.oolio)\b/i.test(q);
 }
 
-// Extract significant keywords from a query
 function extractKeywords(q) {
   const words = q.toLowerCase().match(/[a-z0-9]+/g) || [];
   return [...new Set(words.filter(w => w.length >= 2 && !STOPWORDS.has(w)))].slice(0, 8);
 }
 
-// Detect when the user is asking something OFF-TOPIC (not about Oolio/sales/work)
-// Examples: footy scores, weather, news, jokes, random trivia, life advice, "are you the best", etc.
 function isOffTopicQuery(q) {
   const text = q.toLowerCase();
-  // Strong work signals — bypass off-topic mode
   const workSignals = /\b(oolio|ordermate|bepoz|swiftpos|deliverit|idealpos|pos|kds|kiosk|terminal|merchant|venue|customer|client|prospect|deal|hubspot|crm|ukg|leave|integration|payment|surcharge|loyalty|gift card|reservation|hospitality|cafe|restaurant|pub|club|stadium|qsr|fine dining|sales|pipeline|quote|pricing|onboard|training|install|teams channel|team channel|sharepoint|product|feature|hardware|help doc|support)\b/;
   if (workSignals.test(text)) return false;
-  
-  // Off-topic signals
   const offTopicSignals = /\b(footy|nrl|afl|cricket|rugby|soccer|football|tennis|score|game|match|weather|forecast|temperature|raining|sunny|news|election|prime minister|politics|joke|funny|meme|movie|tv show|netflix|spotify|music|song|recipe|cook|food|holiday|travel|flight|hotel|stock|crypto|bitcoin|who is|whats|what is|tell me about|how do i|life|advice|relationship|coffee|lunch|dinner|breakfast|gym|workout)\b/;
-  
-  // Cheeky/personal signals — also handled in off-topic flow with personality
   const cheekySignals = /\b(best (?:rep|sales|bdm|salesperson|seller|closer|performer)|goat|legend|champion|top performer|are you (?:the )?best|smartest|funniest|coolest|olivia|liv|bridget|kris|ai|chatgpt|claude|alive|sentient|robot|love)\b/;
-  
   return offTopicSignals.test(text) || cheekySignals.test(text);
 }
 
-// In-memory cache for tree.oolio.com (5 min TTL)
+// tree.oolio.com cache
 let roadmapCache = { content: null, fetchedAt: 0 };
 const ROADMAP_TTL_MS = 5 * 60 * 1000;
-
 async function getRoadmap() {
-  const now = Date.now();
-  if (roadmapCache.content && (now - roadmapCache.fetchedAt) < ROADMAP_TTL_MS) {
-    return roadmapCache.content;
-  }
+  if (roadmapCache.content && (Date.now() - roadmapCache.fetchedAt) < ROADMAP_TTL_MS) return roadmapCache.content;
   try {
-    const r = await fetch("https://tree.oolio.com/tree", {
-      headers: { "User-Agent": "OolioOnboard/1.0" },
-      signal: AbortSignal.timeout(8000),
-    });
+    const r = await fetch("https://tree.oolio.com/tree", { headers: { "User-Agent": "OolioOnboard/1.0" }, signal: AbortSignal.timeout(8000) });
     if (!r.ok) return null;
     const html = await r.text();
-    const text = html
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'").replace(/&quot;/g, '"')
-      .replace(/\s+/g, " ").trim().slice(0, 6000);
-    roadmapCache = { content: text, fetchedAt: now };
+    const text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "").replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, " ").trim().slice(0, 6000);
+    roadmapCache = { content: text, fetchedAt: Date.now() };
     return text;
   } catch { return null; }
 }
 
-// Tavily web search restricted to Oolio help domains
 async function searchOolioHelpDocs(query, product) {
   if (!process.env.TAVILY_API_KEY) return null;
   const domainMap = {
@@ -169,53 +134,80 @@ async function searchOolioHelpDocs(query, product) {
   const domains = domainMap[product] || domainMap.oolio;
   try {
     const r = await fetch("https://api.tavily.com/search", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        api_key: process.env.TAVILY_API_KEY,
-        query, search_depth: "basic", max_results: 4,
-        include_domains: domains,
-      }),
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ api_key: process.env.TAVILY_API_KEY, query, search_depth: "basic", max_results: 4, include_domains: domains }),
       signal: AbortSignal.timeout(8000),
     });
     if (!r.ok) return null;
     const data = await r.json();
-    if (!data.results || data.results.length === 0) return null;
-    return data.results.map(res => ({
-      title: res.title,
-      url: res.url,
-      content: (res.content || "").slice(0, 800),
-    }));
+    if (!data.results || !data.results.length) return null;
+    return data.results.map(res => ({ title: res.title, url: res.url, content: (res.content || "").slice(0, 800) }));
   } catch { return null; }
 }
 
-// Tavily general web search (no domain restriction) for off-topic / casual questions
 async function searchWebGeneral(query) {
   if (!process.env.TAVILY_API_KEY) return null;
   try {
     const r = await fetch("https://api.tavily.com/search", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        api_key: process.env.TAVILY_API_KEY,
-        query,
-        search_depth: "basic",
-        max_results: 3,
-        include_answer: true, // Tavily can summarise — quicker for off-topic stuff
-      }),
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ api_key: process.env.TAVILY_API_KEY, query, search_depth: "basic", max_results: 3, include_answer: true }),
       signal: AbortSignal.timeout(8000),
     });
     if (!r.ok) return null;
     const data = await r.json();
     return {
       answer: data.answer || null,
-      results: (data.results || []).slice(0, 3).map(res => ({
-        title: res.title,
-        url: res.url,
-        content: (res.content || "").slice(0, 500),
-      })),
+      results: (data.results || []).slice(0, 3).map(res => ({ title: res.title, url: res.url, content: (res.content || "").slice(0, 500) })),
     };
   } catch { return null; }
+}
+
+// Generate session title using Haiku (cheap)
+async function generateSessionTitle(firstMessage) {
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 30,
+        messages: [{ role: "user", content: `Generate a 2-5 word title summarising this question. Title only, no quotes, no punctuation. Question: "${firstMessage.slice(0, 200)}"` }],
+      }),
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    let title = data.content?.[0]?.text?.trim() || "";
+    title = title.replace(/^["']|["']$/g, "").replace(/\.$/, "").slice(0, 80);
+    return title || null;
+  } catch { return null; }
+}
+
+// Generate follow-ups using Haiku (cheap)
+async function generateFollowUps(messages, answer) {
+  try {
+    const last2 = messages.slice(-2).map(m => `${m.role}: ${m.content.slice(0, 300)}`).join("\n");
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 200,
+        messages: [{
+          role: "user",
+          content: `Based on this conversation, suggest 2 short follow-up questions the user might want to ask next. Each follow-up should be 4-10 words. Return ONLY a JSON array like ["Question 1?", "Question 2?"] — no other text. Context:\n${last2}\nLatest answer: ${answer.slice(0, 400)}`,
+        }],
+      }),
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!r.ok) return [];
+    const data = await r.json();
+    const text = data.content?.[0]?.text?.trim() || "[]";
+    const match = text.match(/\[[\s\S]*\]/);
+    if (!match) return [];
+    const arr = JSON.parse(match[0]);
+    return Array.isArray(arr) ? arr.slice(0, 3).map(s => String(s).slice(0, 100)) : [];
+  } catch { return []; }
 }
 
 export async function POST(request) {
@@ -226,16 +218,15 @@ export async function POST(request) {
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) missing.push("SUPABASE_SERVICE_ROLE_KEY");
     if (!process.env.ANTHROPIC_API_KEY) missing.push("ANTHROPIC_API_KEY");
     if (missing.length > 0) {
-      return Response.json({
-        error: `Missing env vars on server: ${missing.join(", ")}.`
-      }, { status: 500 });
+      return Response.json({ error: `Missing env vars on server: ${missing.join(", ")}.` }, { status: 500 });
     }
 
     const auth = await getCurrentUser();
     if (!auth) return Response.json({ error: "Not authenticated" }, { status: 401 });
     const { user, profile } = auth;
 
-    const { messages } = await request.json();
+    const body = await request.json();
+    const { messages, sessionId: providedSessionId, stream: streamRequested } = body;
     if (!Array.isArray(messages) || messages.length === 0) {
       return Response.json({ error: "Messages required" }, { status: 400 });
     }
@@ -244,57 +235,58 @@ export async function POST(request) {
     const detectedProduct = detectProduct(lastUserMessage);
     const keywords = extractKeywords(lastUserMessage);
 
-    // ─── KNOWLEDGE RETRIEVAL ───
-    const supabase = await createClient();
-    const productFilter = [detectedProduct, "general"];
+    const service = createServiceClient();
 
-    let knowledgeChunks = [];
-
-    // Strategy 1: Search topic + content with ILIKE for each significant keyword
+    // ─── BRAIN RETRIEVAL ───
+    let brainChunks = [];
     if (keywords.length > 0) {
       const orConditions = [];
       for (const word of keywords) {
-        const safe = word.replace(/[%_]/g, ""); // sanitize
+        const safe = word.replace(/[%_]/g, "");
         if (safe) {
-          orConditions.push(`topic.ilike.%${safe}%`);
+          orConditions.push(`title.ilike.%${safe}%`);
           orConditions.push(`content.ilike.%${safe}%`);
         }
       }
       if (orConditions.length > 0) {
-        const { data } = await supabase.from("knowledge")
-          .select("topic, content, product, source_url, category")
-          .eq("approved", true)
-          .in("product", productFilter)
+        const { data } = await service.from("brain")
+          .select("title, content, source_url")
           .or(orConditions.join(","))
           .limit(20);
-        knowledgeChunks = data || [];
+        brainChunks = data || [];
+      }
+    }
+    if (brainChunks.length < 8) {
+      const { data: recent } = await service.from("brain")
+        .select("title, content, source_url")
+        .order("updated_at", { ascending: false })
+        .limit(20);
+      const seen = new Set(brainChunks.map(b => b.title));
+      for (const r of (recent || [])) {
+        if (!seen.has(r.title) && brainChunks.length < 25) {
+          brainChunks.push(r);
+          seen.add(r.title);
+        }
       }
     }
 
-    // Strategy 2: Always include the most recent N entries as broad context (Claude can sift through)
-    const { data: recent } = await supabase.from("knowledge")
-      .select("topic, content, product, source_url, category")
-      .eq("approved", true)
-      .in("product", productFilter)
-      .order("created_at", { ascending: false })
-      .limit(15);
-
-    const seen = new Set(knowledgeChunks.map(k => k.topic));
-    for (const r of (recent || [])) {
-      if (!seen.has(r.topic) && knowledgeChunks.length < 30) {
-        knowledgeChunks.push(r);
-        seen.add(r.topic);
-      }
+    let brainBlock = "";
+    if (brainChunks.length > 0) {
+      brainBlock = "\n\n═══ OOLIO BRAIN (primary knowledge source — admin-curated, use this FIRST) ═══\n" +
+        brainChunks.map((b, i) => `[B${i + 1}] ${b.title}\n${b.content}${b.source_url ? `\nSource: ${b.source_url}` : ""}`).join("\n\n");
     }
 
-    let knowledgeBlock = "";
-    if (knowledgeChunks.length > 0) {
-      knowledgeBlock = "\n\n═══ APPROVED INTERNAL KNOWLEDGE (use this FIRST — admins have explicitly approved this content) ═══\n" +
-        knowledgeChunks.map((k, i) =>
-          `[${i + 1}] (${k.product}${k.category ? "/" + k.category : ""}) ${k.topic}\n${k.content}${k.source_url ? `\nSource: ${k.source_url}` : ""}`
-        ).join("\n\n");
-    } else {
-      knowledgeBlock = "\n\n═══ APPROVED INTERNAL KNOWLEDGE ═══\n(No matching approved knowledge found for this query.)";
+    // ─── DOCUMENTS LIBRARY (titles + links) ───
+    const { data: documents } = await service.from("documents")
+      .select("title, description, file_type, category, external_url, storage_path, id");
+
+    let docsBlock = "";
+    if (documents && documents.length > 0) {
+      const docLines = documents.map(d => {
+        const link = d.external_url || `/api/admin/documents?id=${d.id}`;
+        return `- [${d.title}](${link})${d.description ? ` — ${d.description}` : ""} (${d.category}, ${d.file_type})`;
+      }).join("\n");
+      docsBlock = `\n\n═══ DOCUMENTS LIBRARY (mention and link when relevant) ═══\n${docLines}`;
     }
 
     // ─── ROADMAP ───
@@ -303,96 +295,197 @@ export async function POST(request) {
     if (isRoadmapQuestion(lastUserMessage)) {
       const roadmap = await getRoadmap();
       if (roadmap) {
-        roadmapBlock = `\n\n═══ LIVE ROADMAP (https://tree.oolio.com/tree — use for "what's coming/shipped/in beta" questions) ═══\n${roadmap}\n\nALWAYS link the user to https://tree.oolio.com/tree for the freshest view.`;
+        roadmapBlock = `\n\n═══ LIVE ROADMAP (tree.oolio.com) ═══\n${roadmap}\n\nAlways link to https://tree.oolio.com/tree.`;
         roadmapUsed = true;
       }
     }
 
-    // ─── HELP DOCS FALLBACK (Tavily, Oolio domains only) ───
+    // ─── HELP DOCS FALLBACK ───
     let helpDocsBlock = "";
     let helpDocsUsed = false;
     const offTopic = isOffTopicQuery(lastUserMessage);
-    const shouldUseHelpDocs = !offTopic && knowledgeChunks.length < 5 && !isRoadmapQuestion(lastUserMessage);
-    if (shouldUseHelpDocs) {
+    if (!offTopic && brainChunks.length < 5 && !isRoadmapQuestion(lastUserMessage)) {
       const results = await searchOolioHelpDocs(lastUserMessage, detectedProduct);
       if (results && results.length > 0) {
-        helpDocsBlock = "\n\n═══ OOLIO HELP DOCS (live web search) ═══\n" +
-          results.map((r, i) => `[H${i + 1}] ${r.title}\n${r.content}\nSource: ${r.url}`).join("\n\n") +
-          "\n\nIMPORTANT: When citing these results, ALWAYS include the source URL so the user can read the full article.";
+        helpDocsBlock = "\n\n═══ OOLIO HELP DOCS (live web — fallback) ═══\n" +
+          results.map((r, i) => `[H${i + 1}] ${r.title}\n${r.content}\nSource: ${r.url}`).join("\n\n");
         helpDocsUsed = true;
       }
     }
 
-    // ─── OFF-TOPIC / CASUAL WEB SEARCH (general Tavily) ───
+    // ─── OFF-TOPIC WEB ───
     let offTopicBlock = "";
     let offTopicUsed = false;
     if (offTopic) {
       const web = await searchWebGeneral(lastUserMessage);
       if (web && (web.answer || web.results.length > 0)) {
-        offTopicBlock = "\n\n═══ OFF-TOPIC / LIVE WEB SEARCH ═══\nThe user is asking something casual or off-topic. Use this info to answer briefly, then playfully redirect them back to Oolio work — keep it light and fun, not preachy.\n";
+        offTopicBlock = "\n\n═══ OFF-TOPIC LIVE WEB SEARCH ═══\nUser asked something casual. Answer briefly with personality, then nudge back to Oolio work.\n";
         if (web.answer) offTopicBlock += `\nQuick answer: ${web.answer}\n`;
-        if (web.results.length > 0) {
-          offTopicBlock += "\nSources:\n" + web.results.map((r, i) => `[W${i + 1}] ${r.title}: ${r.content}`).join("\n");
-        }
+        if (web.results.length) offTopicBlock += "\nSources:\n" + web.results.map((r, i) => `[W${i + 1}] ${r.title}: ${r.content}`).join("\n");
         offTopicUsed = true;
       } else {
-        // Even if Tavily returns nothing, flag that it's off-topic so the AI handles with personality
-        offTopicBlock = "\n\n═══ OFF-TOPIC NOTE ═══\nThis question seems off-topic / casual / cheeky. Answer briefly with personality (per the PERSONALITY & FUN section above) and redirect back to Oolio work.";
+        offTopicBlock = "\n\n═══ OFF-TOPIC NOTE ═══\nThis is casual / off-topic. Use personality and nudge back to work.";
       }
     }
 
-    const systemPrompt = SYSTEM_PROMPT + knowledgeBlock + roadmapBlock + helpDocsBlock + offTopicBlock + `\n\nCurrent user: ${profile?.name || user.email}`;
+    const systemPrompt = SYSTEM_PROMPT + brainBlock + docsBlock + roadmapBlock + helpDocsBlock + offTopicBlock + `\n\nCurrent user: ${profile?.name || user.email}`;
 
-    // ─── CALL CLAUDE ───
+    // ─── SESSION HANDLING ───
+    let sessionId = providedSessionId;
+    let createdSession = false;
+    if (!sessionId) {
+      const { data } = await service.from("chat_sessions").insert({
+        user_id: user.id,
+        title: "New chat",
+      }).select().single();
+      sessionId = data?.id;
+      createdSession = true;
+    }
+
+    // ─── STREAMING CALL ───
+    if (streamRequested !== false) {
+      const aiResp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1024,
+          system: systemPrompt,
+          messages: messages.map(m => ({ role: m.role, content: m.content })),
+          stream: true,
+        }),
+      });
+
+      if (!aiResp.ok || !aiResp.body) {
+        const err = await aiResp.json().catch(() => ({}));
+        return Response.json({ error: err.error?.message || "AI error" }, { status: 500 });
+      }
+
+      const encoder = new TextEncoder();
+      const reader = aiResp.body.getReader();
+      const decoder = new TextDecoder();
+      let fullAnswer = "";
+
+      const stream = new ReadableStream({
+        async start(controller) {
+          const meta = {
+            type: "meta",
+            sessionId,
+            createdSession,
+            sources: {
+              brain: brainChunks.length,
+              documents: documents?.length || 0,
+              roadmap: roadmapUsed,
+              helpDocs: helpDocsUsed,
+              offTopic: offTopicUsed,
+            },
+            productDetected: offTopic ? "off_topic" : detectedProduct,
+          };
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(meta)}\n\n`));
+
+          try {
+            let buffer = "";
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split("\n");
+              buffer = lines.pop() || "";
+              for (const line of lines) {
+                if (!line.startsWith("data: ")) continue;
+                const data = line.slice(6).trim();
+                if (!data) continue;
+                try {
+                  const parsed = JSON.parse(data);
+                  if (parsed.type === "content_block_delta" && parsed.delta?.text) {
+                    fullAnswer += parsed.delta.text;
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "delta", text: parsed.delta.text })}\n\n`));
+                  }
+                } catch {}
+              }
+            }
+          } catch (e) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "error", error: e.message })}\n\n`));
+          }
+
+          // Post-stream: log, title, follow-ups
+          const sourcesUsedList = [
+            ...brainChunks.map(b => ({ type: "brain", title: b.title })),
+            ...(documents?.length ? [{ type: "docs", count: documents.length }] : []),
+            ...(roadmapUsed ? [{ type: "roadmap" }] : []),
+            ...(helpDocsUsed ? [{ type: "help_docs" }] : []),
+            ...(offTopicUsed ? [{ type: "off_topic_web" }] : []),
+          ];
+
+          const { data: logged } = await service.from("chat_messages").insert({
+            user_id: user.id,
+            user_email: user.email,
+            user_name: profile?.name || user.email,
+            session_id: sessionId,
+            role: "user",
+            question: lastUserMessage,
+            answer: fullAnswer,
+            product_detected: offTopic ? "off_topic" : detectedProduct,
+            knowledge_used: sourcesUsedList,
+          }).select("id").single();
+
+          const { data: sess } = await service.from("chat_sessions").select("message_count, title").eq("id", sessionId).maybeSingle();
+          let titleToSet = sess?.title;
+          if (sess && (sess.title === "New chat" || !sess.title)) {
+            const gen = await generateSessionTitle(lastUserMessage);
+            if (gen) titleToSet = gen;
+          }
+          await service.from("chat_sessions").update({
+            message_count: (sess?.message_count || 0) + 1,
+            last_message_at: new Date().toISOString(),
+            title: titleToSet || sess?.title || "New chat",
+          }).eq("id", sessionId);
+
+          const followUps = await generateFollowUps(
+            [...messages, { role: "assistant", content: fullAnswer }],
+            fullAnswer
+          );
+
+          const tail = {
+            type: "done",
+            messageId: logged?.id,
+            sessionId,
+            sessionTitle: titleToSet || "New chat",
+            followUps,
+          };
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(tail)}\n\n`));
+          controller.close();
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache, no-transform",
+          "Connection": "keep-alive",
+          "X-Accel-Buffering": "no",
+        },
+      });
+    }
+
+    // Non-streaming fallback
     const apiResp = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1024,
-        system: systemPrompt,
-        messages: messages.map(m => ({ role: m.role, content: m.content })),
-      }),
+      headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1024, system: systemPrompt, messages: messages.map(m => ({ role: m.role, content: m.content })) }),
     });
-
     const data = await apiResp.json();
-    if (data.error) return Response.json({ error: data.error.message || "AI error" }, { status: 500 });
+    if (data.error) return Response.json({ error: data.error.message }, { status: 500 });
     const answer = data.content?.[0]?.text || "Sorry, I couldn't generate a response.";
 
-    // ─── LOG ───
-    const service = createServiceClient();
-    const sourcesUsedList = [
-      ...(knowledgeChunks.map(k => ({ type: "knowledge", topic: k.topic, product: k.product }))),
-      ...(roadmapUsed ? [{ type: "roadmap", source: "tree.oolio.com" }] : []),
-      ...(helpDocsUsed ? [{ type: "help_docs", source: "tavily" }] : []),
-      ...(offTopicUsed ? [{ type: "off_topic_web", source: "tavily" }] : []),
-    ];
     const { data: logged } = await service.from("chat_messages").insert({
-      user_id: user.id,
-      user_email: user.email,
-      user_name: profile?.name || user.email,
-      question: lastUserMessage,
-      answer,
+      user_id: user.id, user_email: user.email, user_name: profile?.name || user.email,
+      session_id: sessionId, role: "user", question: lastUserMessage, answer,
       product_detected: offTopic ? "off_topic" : detectedProduct,
-      knowledge_used: sourcesUsedList,
+      knowledge_used: brainChunks.map(b => ({ type: "brain", title: b.title })),
     }).select("id").single();
 
-    return Response.json({
-      answer,
-      messageId: logged?.id,
-      sourcesUsed: sourcesUsedList.length,
-      sourceBreakdown: {
-        knowledge: knowledgeChunks.length,
-        roadmap: roadmapUsed,
-        helpDocs: helpDocsUsed,
-        offTopic: offTopicUsed,
-      },
-      productDetected: offTopic ? "off_topic" : detectedProduct,
-    });
+    return Response.json({ answer, messageId: logged?.id, sessionId });
   } catch (err) {
     return Response.json({ error: "Server error: " + err.message }, { status: 500 });
   }

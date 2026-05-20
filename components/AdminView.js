@@ -3,19 +3,23 @@ import { useEffect, useState } from "react";
 
 const P = "#673AB6", P2 = "#5E35B1";
 
-export default function AdminView() {
-  const [tab, setTab] = useState("corrections");
+export default function AdminView({ profile }) {
+  const [tab, setTab] = useState("brain");
+  const isOwner = profile?.role === "owner";
 
   return (
     <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
       <div style={{ padding: "14px 14px 0" }}>
-        <div style={{ fontFamily: "'Fraunces',serif", fontSize: 22, fontWeight: 700, color: P }}>Admin Panel</div>
-        <div style={{ fontSize: 12, color: "#999", marginTop: 2 }}>Knowledge moderation & team management</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ fontFamily: "'Fraunces',serif", fontSize: 22, fontWeight: 700, color: P }}>Admin Panel</div>
+          {isOwner && <span style={{ fontSize: 10, padding: "3px 8px", borderRadius: 100, background: "rgba(103,58,182,0.1)", color: P, fontWeight: 700, letterSpacing: "0.05em" }}>👑 OWNER</span>}
+        </div>
+        <div style={{ fontSize: 12, color: "#999", marginTop: 2 }}>Knowledge curation, document library, team management</div>
       </div>
       <div style={{ display: "flex", gap: 4, padding: "12px 12px", overflowX: "auto", borderBottom: "1px solid rgba(103,58,182,0.06)" }}>
         {[
+          ["brain", "🧠 Oolio Brain"],
           ["corrections", "✏️ Corrections"],
-          ["knowledge", "🧠 Knowledge"],
           ["documents", "📄 Documents"],
           ["users", "👥 Users"],
           ["activity", "📊 Activity"],
@@ -26,12 +30,174 @@ export default function AdminView() {
         ))}
       </div>
       <div style={{ flex: 1, overflowY: "auto", padding: "14px" }}>
+        {tab === "brain" && <BrainTab />}
         {tab === "corrections" && <CorrectionsTab />}
-        {tab === "knowledge" && <KnowledgeTab />}
         {tab === "documents" && <DocumentsTab />}
-        {tab === "users" && <UsersTab />}
+        {tab === "users" && <UsersTab profile={profile} />}
         {tab === "activity" && <ActivityTab />}
       </div>
+    </div>
+  );
+}
+
+// ─── OOLIO BRAIN ───
+function BrainTab() {
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [editing, setEditing] = useState(null); // null | "new" | { id, title, content, source_url }
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [msg, setMsg] = useState("");
+
+  const load = async () => {
+    setLoading(true);
+    setErr("");
+    try {
+      const r = await fetch("/api/admin/brain");
+      const d = await r.json();
+      if (d.error) { setErr(d.error); setEntries([]); }
+      else setEntries(d.entries || []);
+    } catch (e) { setErr("Network error: " + e.message); }
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const openNew = () => {
+    setEditing("new");
+    setTitle(""); setContent(""); setSourceUrl("");
+    setErr(""); setMsg("");
+  };
+  const openEdit = (entry) => {
+    setEditing(entry);
+    setTitle(entry.title); setContent(entry.content); setSourceUrl(entry.source_url || "");
+    setErr(""); setMsg("");
+  };
+  const closeEditor = () => {
+    setEditing(null); setTitle(""); setContent(""); setSourceUrl("");
+    setErr(""); setMsg("");
+  };
+
+  const save = async () => {
+    setErr(""); setMsg("");
+    if (!title.trim()) { setErr("Title is required."); return; }
+    if (!content.trim()) { setErr("Content is required."); return; }
+    setBusy(true);
+    try {
+      if (editing === "new") {
+        const r = await fetch("/api/admin/brain", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title, content, source_url: sourceUrl || null }),
+        });
+        const d = await r.json();
+        if (!r.ok) { setErr(d.error || "Failed to save"); setBusy(false); return; }
+      } else {
+        const r = await fetch("/api/admin/brain", {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: editing.id, title, content, source_url: sourceUrl || null }),
+        });
+        const d = await r.json();
+        if (!r.ok) { setErr(d.error || "Failed to update"); setBusy(false); return; }
+      }
+      setMsg("Saved!");
+      await load();
+      setTimeout(closeEditor, 800);
+    } catch (e) { setErr("Network error: " + e.message); }
+    setBusy(false);
+  };
+
+  const del = async (id) => {
+    if (!confirm("Delete this Brain entry? It can't be undone.")) return;
+    await fetch("/api/admin/brain", {
+      method: "DELETE", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    load();
+  };
+
+  const filtered = search.trim()
+    ? entries.filter(e => (e.title + " " + e.content).toLowerCase().includes(search.toLowerCase()))
+    : entries;
+
+  if (editing) {
+    return (
+      <div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+          <button onClick={closeEditor} style={{ width: 32, height: 32, borderRadius: 8, border: "1px solid rgba(103,58,182,0.15)", background: "white", color: P, cursor: "pointer", fontSize: 14 }}>←</button>
+          <div style={{ fontSize: 16, fontWeight: 700, color: P }}>{editing === "new" ? "Add Brain entry" : "Edit Brain entry"}</div>
+        </div>
+
+        <Lbl>Title</Lbl>
+        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Oolio Pay overview" style={inpStyle} />
+
+        <Lbl>Content (Markdown supported — bold, lists, links, headers)</Lbl>
+        <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="The content the AI will use to answer questions related to this topic..." style={{ ...inpStyle, minHeight: 280, fontFamily: 'ui-monospace, "SF Mono", Menlo, Consolas, monospace', fontSize: 13, lineHeight: 1.55 }} />
+        <div style={{ fontSize: 10, color: "#aaa", marginTop: 4 }}>
+          💡 Tip: Use **bold**, lists with -, links [text](url), and headers like # H1, ## H2
+        </div>
+
+        <Lbl>Source URL (optional)</Lbl>
+        <input value={sourceUrl} onChange={e => setSourceUrl(e.target.value)} placeholder="https://help.oolio.com/..." style={inpStyle} />
+
+        {err && <div style={{ fontSize: 12, color: "#DC2626", marginTop: 10, padding: 8, background: "rgba(220,38,38,0.06)", borderRadius: 8 }}>⚠️ {err}</div>}
+        {msg && <div style={{ fontSize: 12, color: "#16A34A", marginTop: 10, padding: 8, background: "rgba(22,163,74,0.06)", borderRadius: 8 }}>✓ {msg}</div>}
+
+        <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+          <button onClick={closeEditor} style={{ flex: 1, padding: 11, borderRadius: 10, border: "1px solid #ddd", background: "white", color: "#666", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>Cancel</button>
+          <button onClick={save} disabled={busy} style={{ flex: 2, padding: 11, borderRadius: 10, border: "none", background: busy ? "#D4D0DA" : `linear-gradient(135deg, ${P}, ${P2})`, color: "white", fontWeight: 700, fontSize: 13, cursor: busy ? "default" : "pointer" }}>
+            {busy ? "Saving…" : editing === "new" ? "Add to Brain" : "Save changes"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center" }}>
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search Brain..." style={{ ...inpStyle, marginBottom: 0, flex: 1 }} />
+        <button onClick={openNew} style={{ padding: "10px 14px", borderRadius: 10, border: "none", background: `linear-gradient(135deg, ${P}, ${P2})`, color: "white", fontWeight: 700, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>+ Add entry</button>
+      </div>
+
+      <div style={{ fontSize: 11, color: "#888", marginBottom: 10 }}>
+        {entries.length} {entries.length === 1 ? "entry" : "entries"} · This is the AI's primary knowledge source
+        {search && filtered.length !== entries.length && ` · ${filtered.length} matching`}
+      </div>
+
+      {err && <div style={{ fontSize: 12, color: "#DC2626", padding: 8, background: "rgba(220,38,38,0.06)", borderRadius: 8, marginBottom: 10 }}>⚠️ {err}</div>}
+
+      {loading && <div style={{ textAlign: "center", padding: 30, color: "#999" }}>Loading…</div>}
+
+      {!loading && filtered.length === 0 && (
+        <div style={{ textAlign: "center", padding: 40, color: "#bbb" }}>
+          <div style={{ fontSize: 28, marginBottom: 10 }}>🧠</div>
+          <div style={{ fontSize: 13 }}>{search ? "No entries match your search." : "Brain is empty. Add your first entry to get started."}</div>
+        </div>
+      )}
+
+      {filtered.map(e => (
+        <div key={e.id} style={{ ...cardStyle, position: "relative" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a2e", paddingRight: 60, marginBottom: 4 }}>{e.title}</div>
+          <div style={{ fontSize: 12, color: "#666", lineHeight: 1.55, maxHeight: 80, overflow: "hidden", position: "relative" }}>
+            {e.content.length > 240 ? e.content.slice(0, 240) + "…" : e.content}
+          </div>
+          {e.source_url && (
+            <div style={{ fontSize: 10, color: P, marginTop: 6 }}>
+              <a href={e.source_url} target="_blank" rel="noopener noreferrer" style={{ color: P, textDecoration: "underline" }}>{e.source_url}</a>
+            </div>
+          )}
+          <div style={{ fontSize: 10, color: "#aaa", marginTop: 6 }}>
+            Updated {new Date(e.updated_at).toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" })}
+          </div>
+          <div style={{ position: "absolute", top: 12, right: 12, display: "flex", gap: 4 }}>
+            <button onClick={() => openEdit(e)} style={{ width: 26, height: 26, borderRadius: 6, border: "none", background: "rgba(103,58,182,0.08)", color: P, cursor: "pointer", fontSize: 11 }} title="Edit">✏️</button>
+            <button onClick={() => del(e.id)} style={{ width: 26, height: 26, borderRadius: 6, border: "none", background: "rgba(220,50,50,0.06)", color: "#DC3232", cursor: "pointer", fontSize: 11 }} title="Delete">🗑</button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -127,74 +293,6 @@ function CorrectionCard({ c, onReview }) {
   );
 }
 
-// ─── KNOWLEDGE ───
-function KnowledgeTab() {
-  const [items, setItems] = useState([]);
-  const [topic, setTopic] = useState("");
-  const [content, setContent] = useState("");
-  const [product, setProduct] = useState("oolio");
-  const [category, setCategory] = useState("");
-  const [sourceUrl, setSourceUrl] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  const load = async () => {
-    const r = await fetch("/api/admin/knowledge");
-    const d = await r.json();
-    setItems(d.knowledge || []);
-  };
-  useEffect(() => { load(); }, []);
-
-  const add = async () => {
-    if (!topic.trim() || !content.trim()) return;
-    setBusy(true);
-    await fetch("/api/admin/knowledge", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topic, content, product, category, source_url: sourceUrl }),
-    });
-    setTopic(""); setContent(""); setCategory(""); setSourceUrl("");
-    setBusy(false);
-    load();
-  };
-
-  const del = async (id) => {
-    if (!confirm("Delete this knowledge entry?")) return;
-    await fetch("/api/admin/knowledge", {
-      method: "DELETE", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    load();
-  };
-
-  return (
-    <div>
-      <div style={{ ...cardStyle, background: "rgba(103,58,182,0.02)", border: `1.5px solid rgba(103,58,182,0.12)` }}>
-        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: P }}>Add new knowledge entry</div>
-        <input value={topic} onChange={e => setTopic(e.target.value)} placeholder="Topic (e.g. 'Pricing for Bepoz')" style={inpStyle} />
-        <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Content / answer" style={{ ...inpStyle, minHeight: 80, marginTop: 8 }} />
-        <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-          {["oolio", "ordermate", "bepoz", "general"].map(p => (
-            <button key={p} onClick={() => setProduct(p)} style={pillBtn(product === p)}>{p}</button>
-          ))}
-        </div>
-        <input value={category} onChange={e => setCategory(e.target.value)} placeholder="Category (optional)" style={{ ...inpStyle, marginTop: 8 }} />
-        <input value={sourceUrl} onChange={e => setSourceUrl(e.target.value)} placeholder="Source URL (optional)" style={{ ...inpStyle, marginTop: 8 }} />
-        <button onClick={add} disabled={busy || !topic.trim() || !content.trim()} style={{ width: "100%", padding: 10, marginTop: 10, borderRadius: 10, border: "none", background: topic.trim() && content.trim() ? `linear-gradient(135deg, ${P}, ${P2})` : "#D4D0DA", color: "white", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>{busy ? "..." : "Add Knowledge"}</button>
-      </div>
-
-      <div style={{ fontSize: 11, fontWeight: 700, color: P, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>All entries ({items.length})</div>
-      {items.map(k => (
-        <div key={k.id} style={{ ...cardStyle, position: "relative" }}>
-          <div style={{ fontSize: 13, fontWeight: 600, paddingRight: 30 }}>{k.topic}</div>
-          <div style={{ fontSize: 12, color: "#666", marginTop: 4, lineHeight: 1.5 }}>{k.content}</div>
-          <div style={{ fontSize: 10, color: P, fontWeight: 600, marginTop: 6, textTransform: "uppercase" }}>{k.product}{k.category ? ` · ${k.category}` : ""}</div>
-          <button onClick={() => del(k.id)} style={{ position: "absolute", top: 12, right: 12, width: 24, height: 24, borderRadius: 6, border: "none", background: "rgba(220,50,50,0.06)", color: "#DC3232", cursor: "pointer", fontSize: 12 }}>✕</button>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── DOCUMENTS ───
 function DocumentsTab() {
   const [docs, setDocs] = useState([]);
   const [title, setTitle] = useState("");
@@ -312,13 +410,17 @@ function DocumentsTab() {
 }
 
 // ─── USERS ───
-function UsersTab() {
+function UsersTab({ profile }) {
   const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const isOwner = profile?.role === "owner";
 
   const load = async () => {
+    setLoading(true);
     const r = await fetch("/api/admin/users");
     const d = await r.json();
     setUsers(d.users || []);
+    setLoading(false);
   };
   useEffect(() => { load(); }, []);
 
@@ -330,29 +432,67 @@ function UsersTab() {
     load();
   };
 
+  // Sort owner first, then admins, then everyone else
+  const sorted = [...users].sort((a, b) => {
+    const rank = r => r === "owner" ? 0 : r === "admin" ? 1 : r === "manager" ? 2 : 3;
+    return rank(a.role) - rank(b.role);
+  });
+
   return (
     <div>
       <div style={{ fontSize: 11, fontWeight: 700, color: P, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Team members ({users.length})</div>
-      {users.map(u => (
-        <div key={u.id} style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 32, height: 32, borderRadius: "50%", background: u.role === "admin" ? `linear-gradient(135deg, ${P}, ${P2})` : "#E0D8ED", color: u.role === "admin" ? "white" : P, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
-            {(u.name || u.email).split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+      {loading && <div style={{ textAlign: "center", padding: 30, color: "#999" }}>Loading…</div>}
+      {sorted.map(u => {
+        const targetIsOwner = u.role === "owner";
+        const isSelf = u.id === profile?.id;
+        // Only owner can modify owner; nobody can demote owner (other than themselves)
+        const canChangeRole = !targetIsOwner || (isOwner && !isSelf);
+        const canDeactivate = !targetIsOwner;
+
+        return (
+          <div key={u.id} style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: "50%",
+              background: targetIsOwner
+                ? "linear-gradient(135deg, #F59E0B, #D97706)"
+                : (u.role === "admin" ? `linear-gradient(135deg, ${P}, ${P2})` : "#E0D8ED"),
+              color: targetIsOwner || u.role === "admin" ? "white" : P,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 11, fontWeight: 700, flexShrink: 0,
+            }}>
+              {targetIsOwner ? "👑" : (u.name || u.email).split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+                {u.name}
+                {targetIsOwner && <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 100, background: "rgba(245,158,11,0.12)", color: "#D97706", fontWeight: 700, letterSpacing: "0.05em" }}>OWNER</span>}
+                {isSelf && <span style={{ fontSize: 9, color: "#aaa" }}>(you)</span>}
+              </div>
+              <div style={{ fontSize: 11, color: "#999" }}>{u.email}</div>
+            </div>
+            <select
+              value={u.role}
+              disabled={!canChangeRole}
+              onChange={e => update(u.id, { role: e.target.value })}
+              style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid rgba(103,58,182,0.15)", fontSize: 11, fontFamily: "inherit", background: canChangeRole ? "white" : "#F4F2F7", color: canChangeRole ? "#1a1a2e" : "#aaa", cursor: canChangeRole ? "pointer" : "not-allowed" }}
+            >
+              {isOwner && <option value="owner">Owner</option>}
+              <option value="admin">Admin</option>
+              <option value="manager">Manager</option>
+              <option value="sales_rep">Sales Rep</option>
+              <option value="viewer">Viewer</option>
+            </select>
+            <button
+              onClick={() => update(u.id, { active: !u.active })}
+              disabled={!canDeactivate}
+              style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid rgba(103,58,182,0.15)", background: u.active ? "white" : "rgba(220,50,50,0.06)", color: u.active ? P : "#DC2626", fontSize: 10, fontWeight: 600, cursor: canDeactivate ? "pointer" : "not-allowed", opacity: canDeactivate ? 1 : 0.4 }}
+              title={!canDeactivate ? "Owner can't be deactivated" : ""}
+            >
+              {u.active ? "Active" : "Inactive"}
+            </button>
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>{u.name}</div>
-            <div style={{ fontSize: 11, color: "#999" }}>{u.email}</div>
-          </div>
-          <select value={u.role} onChange={e => update(u.id, { role: e.target.value })} style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid rgba(103,58,182,0.15)", fontSize: 11, fontFamily: "inherit", background: "white" }}>
-            <option value="sales_rep">Sales Rep</option>
-            <option value="manager">Manager</option>
-            <option value="admin">Admin</option>
-            <option value="viewer">Viewer</option>
-          </select>
-          <button onClick={() => update(u.id, { active: !u.active })} style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid rgba(103,58,182,0.15)", background: u.active ? "white" : "rgba(220,50,50,0.06)", color: u.active ? P : "#DC2626", fontSize: 10, fontWeight: 600, cursor: "pointer" }}>
-            {u.active ? "Active" : "Inactive"}
-          </button>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -400,9 +540,30 @@ function ActivityTab() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, marginBottom: 14 }}>
         <SummaryCard label="Total Questions" value={summary.totalQueries} icon="💬" />
         <SummaryCard label="Active Users" value={summary.activeUsersCount} icon="👤" />
-        <SummaryCard label="Knowledge Entries" value={summary.knowledgeCount} icon="🧠" />
+        <SummaryCard label="Brain Entries" value={summary.brainCount} icon="🧠" />
         <SummaryCard label="Pending Corrections" value={summary.pendingCorrections} icon="✏️" alert={summary.pendingCorrections > 0} />
       </div>
+
+      {/* Resolution rate (NEW) */}
+      {summary.totalSessions > 0 && (
+        <div style={{ ...cardStyle, marginBottom: 14 }}>
+          <Lbl>Resolution Rate (Got what I needed)</Lbl>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 6 }}>
+            <div style={{ fontSize: 28, fontWeight: 700, color: summary.resolutionRate >= 70 ? "#16A34A" : summary.resolutionRate >= 40 ? "#F59E0B" : "#DC2626" }}>
+              {summary.resolutionRate}%
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ height: 8, background: "rgba(103,58,182,0.08)", borderRadius: 4, overflow: "hidden" }}>
+                <div style={{ width: `${summary.resolutionRate}%`, height: "100%", background: summary.resolutionRate >= 70 ? "#16A34A" : summary.resolutionRate >= 40 ? "#F59E0B" : "#DC2626", transition: "width 0.4s" }} />
+              </div>
+              <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>
+                ✓ {summary.resolvedSessions} of {summary.totalSessions} chats marked resolved
+                {summary.avgTurnsToResolve != null && ` · avg ${summary.avgTurnsToResolve} turns to resolve`}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Feedback rate */}
       {feedback.total > 0 && (

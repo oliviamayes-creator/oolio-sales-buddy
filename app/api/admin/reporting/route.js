@@ -1,9 +1,9 @@
-import { createServiceClient, getCurrentUser } from "../../../../lib/supabase-server";
+import { createServiceClient, getCurrentUser, isAdminOrOwner } from "../../../../lib/supabase-server";
 
 async function requireAdmin() {
   const auth = await getCurrentUser();
   if (!auth) return { error: "Not authenticated", status: 401 };
-  if (auth.profile?.role !== "admin") return { error: "Admin only", status: 403 };
+  if (!isAdminOrOwner(auth.profile)) return { error: "Admin only", status: 403 };
   return { auth };
 }
 
@@ -145,20 +145,37 @@ export async function GET(request) {
     if (correctionCounts[c.status] !== undefined) correctionCounts[c.status]++;
   }
 
-  // ─── KNOWLEDGE BASE SIZE ───
-  const { count: knowledgeCount } = await service.from("knowledge").select("*", { count: "exact", head: true }).eq("approved", true);
+  // ─── BRAIN + DOCUMENTS + USERS ───
+  const { count: brainCount } = await service.from("brain").select("*", { count: "exact", head: true });
   const { count: documentCount } = await service.from("documents").select("*", { count: "exact", head: true });
   const { count: userCount } = await service.from("profiles").select("*", { count: "exact", head: true });
+
+  // ─── SESSION RESOLUTION METRICS ───
+  const { data: sessionsInPeriod } = await service.from("chat_sessions")
+    .select("id, resolved, resolved_at, message_count, created_at, last_message_at")
+    .gte("created_at", since);
+  const totalSessions = sessionsInPeriod?.length || 0;
+  const resolvedSessions = (sessionsInPeriod || []).filter(s => s.resolved).length;
+  const resolutionRate = totalSessions > 0 ? Math.round((resolvedSessions / totalSessions) * 100) : null;
+  // Average messages per resolved session (efficiency signal — lower = AI nailing it)
+  const resolvedSessionMsgCounts = (sessionsInPeriod || []).filter(s => s.resolved).map(s => s.message_count || 0);
+  const avgTurnsToResolve = resolvedSessionMsgCounts.length > 0
+    ? +(resolvedSessionMsgCounts.reduce((a, b) => a + b, 0) / resolvedSessionMsgCounts.length).toFixed(1)
+    : null;
 
   return Response.json({
     period: { days, since },
     summary: {
       totalQueries,
       activeUsersCount: activeUsers.length,
-      knowledgeCount: knowledgeCount || 0,
+      brainCount: brainCount || 0,
       documentCount: documentCount || 0,
       userCount: userCount || 0,
       pendingCorrections: correctionCounts.pending,
+      totalSessions,
+      resolvedSessions,
+      resolutionRate,
+      avgTurnsToResolve,
     },
     activeUsers: activeUsers.slice(0, 15),
     topTopics: topTopics.slice(0, 12),

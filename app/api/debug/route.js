@@ -1,10 +1,10 @@
-import { getCurrentUser } from "../../../lib/supabase-server";
+import { getCurrentUser, isAdminOrOwner } from "../../../lib/supabase-server";
 
 // Returns which env vars are available to the server runtime.
 // Admin-only. Does NOT leak values.
 export async function GET() {
   const auth = await getCurrentUser().catch(() => null);
-  if (!auth || auth.profile?.role !== "admin") {
+  if (!auth || !isAdminOrOwner(auth.profile)) {
     return Response.json({ error: "Admin only" }, { status: 403 });
   }
   
