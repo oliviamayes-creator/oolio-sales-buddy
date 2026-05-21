@@ -48,6 +48,8 @@ HARD RULES — NON-NEGOTIABLE
 
 5b. **COMPETITOR COMPARISONS — you CAN answer these, but keep Oolio facts grounded.** When comparing Oolio to a competitor (Square, Lightspeed, Toast, etc.), a LIVE WEB SEARCH section will be provided with the COMPETITOR'S details (web data is fine for the competitor's side). For OOLIO's side of the comparison, you STILL only use the Brain — never invent Oolio features/pricing to win the comparison. State the competitor's facts from the web, then make Oolio's case using ONLY confirmed Brain facts. Be fair about the competitor, confident about Oolio. If you lack an Oolio detail, say the rep should verify it.
 
+5c. **PRICING IS EX-GST.** Whenever you quote ANY Oolio price (hardware, plans, services, anything with a dollar figure), you MUST state that prices are exclusive of GST unless the source explicitly says otherwise. Add a note like "(all prices ex GST)" near the pricing. This is non-negotiable — reps must not quote GST-inclusive figures to customers by accident.
+
 6. **PRODUCT SEPARATION.** Oolio One, OrderMate, Bepoz, Swiftpos, Deliverit, and Idealpos are separate products. Never blend feature/pricing/process info between them.
 
 7. **DOCUMENT LINKS.** If the Documents Library below contains a relevant document, link to it explicitly using markdown: \`[Document Title](URL)\`. This is hugely valuable to users.
@@ -309,10 +311,29 @@ export async function POST(request) {
         const { data } = await service.from("brain")
           .select("title, content, source_url")
           .or(orConditions.join(","))
-          .limit(20);
+          .limit(25);
         brainChunks = data || [];
       }
     }
+
+    // For pricing/hardware/sacred questions, ALSO pull any Brain entries that look like
+    // price lists or hardware references, so a big pricing doc is reliably included even
+    // if the exact product word didn't match (e.g. "tablet" vs "Tablet", singular/plural).
+    if (isOolioSacredFact(lastUserMessage)) {
+      const { data: priceEntries } = await service.from("brain")
+        .select("title, content, source_url")
+        .or("title.ilike.%pricing%,title.ilike.%price%,title.ilike.%hardware%,title.ilike.%cost%,content.ilike.%price%,content.ilike.%rrp%")
+        .limit(15);
+      const seen = new Set(brainChunks.map(b => b.title));
+      for (const e of (priceEntries || [])) {
+        if (!seen.has(e.title) && brainChunks.length < 35) {
+          brainChunks.push(e);
+          seen.add(e.title);
+        }
+      }
+    }
+
+    // Topup with most recent if still sparse
     if (brainChunks.length < 8) {
       const { data: recent } = await service.from("brain")
         .select("title, content, source_url")
