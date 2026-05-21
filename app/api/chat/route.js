@@ -32,6 +32,8 @@ HARD RULES — NON-NEGOTIABLE
 
 5. **HARDWARE COMPATIBILITY** (printers, scanners, KDS displays, terminals, payment devices): NEVER list specific brands or model numbers unless they appear in the Brain or Help Docs below. Always route to the Oolio hardware/support team or help.oolio.com.
 
+5b. **COMPETITOR COMPARISONS — you CAN and SHOULD answer these.** When a user compares Oolio to a competitor (Square, Lightspeed, Toast, Shopify, Tyro, Zeller, etc.), a LIVE WEB SEARCH section will usually be provided below with the competitor's current details. Use it to build a fair, confident sales battlecard: state the competitor's relevant facts, then make Oolio One's case (integrated payments, hospitality-first design, the full Oolioverse, local Australian support, next-business-day settlements, hospitality trading days). Be factual and fair about the competitor — never trash them — but be confident about why Oolio wins for hospitality. If you don't have a specific competitor figure, say the rep should verify it rather than inventing it. This is NOT a "say I don't know" situation — comparisons are core sales enablement.
+
 6. **PRODUCT SEPARATION.** Oolio One, OrderMate, Bepoz, Swiftpos, Deliverit, and Idealpos are separate products. Never blend feature/pricing/process info between them.
 
 7. **DOCUMENT LINKS.** If the Documents Library below contains a relevant document, link to it explicitly using markdown: \`[Document Title](URL)\`. This is hugely valuable to users.
@@ -93,6 +95,25 @@ function detectProduct(q) {
 
 function isRoadmapQuestion(q) {
   return /\b(roadmap|upcoming|coming soon|coming up|planned|scheduled|in development|being built|building|in beta|beta features|new features|shipped|just launched|just shipped|considering|future|whats next|what's next|next release|release notes|tree\.oolio)\b/i.test(q);
+}
+
+// Detect competitor / comparison questions. These need a LIVE web search for the
+// competitor's current pricing/features, then contrast against Oolio's Brain content.
+const COMPETITOR_NAMES = ["square","lightspeed","toast","squarespace","shopify","vend","kounta","redcat","abacus","impos","tyro","zeller","stripe","clover","revel","epos now","eposnow","talech","touchbistro","posbistro","tabin","me&u","mr yum","mryum","quandoo","obee"];
+// Internal Oolio products/plans — comparisons between these are NOT competitor questions
+const INTERNAL_TERMS = ["core","full service","full-service","oolio one","oolio pay","ooliopay","ordermate","bepoz","swiftpos","deliverit","idealpos","oolioverse","kiosk","kds","mpos"];
+function isCompetitorQuestion(q) {
+  const text = q.toLowerCase();
+  const namedCompetitor = COMPETITOR_NAMES.some(c => new RegExp(`\\b${c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(text));
+  if (namedCompetitor) return true;
+  const comparativeLanguage = /\b(compare|comparison|versus|vs\.?|better than|worse than|difference between|differ from|how does .* (?:compare|stack up|measure)|why (?:choose|pick|use) oolio|why not|alternative to|switch from|moving from|migrate from|instead of)\b/i.test(text);
+  if (!comparativeLanguage || !/\boolio\b/i.test(text)) return false;
+  // If the comparison only references internal Oolio products/plans, it's an internal comparison, not a competitor one
+  const internalMatches = INTERNAL_TERMS.filter(t => text.includes(t)).length;
+  // Treat as competitor only if comparative language is present AND it's not purely about internal products
+  // (heuristic: if 2+ internal terms are named and no competitor, assume internal comparison)
+  if (internalMatches >= 2) return false;
+  return true;
 }
 
 function extractKeywords(q) {
@@ -304,12 +325,30 @@ export async function POST(request) {
     let helpDocsBlock = "";
     let helpDocsUsed = false;
     const offTopic = isOffTopicQuery(lastUserMessage);
-    if (!offTopic && brainChunks.length < 5 && !isRoadmapQuestion(lastUserMessage)) {
+    const competitorQ = isCompetitorQuestion(lastUserMessage);
+    if (!offTopic && !competitorQ && brainChunks.length < 5 && !isRoadmapQuestion(lastUserMessage)) {
       const results = await searchOolioHelpDocs(lastUserMessage, detectedProduct);
       if (results && results.length > 0) {
         helpDocsBlock = "\n\n═══ OOLIO HELP DOCS (live web — fallback) ═══\n" +
           results.map((r, i) => `[H${i + 1}] ${r.title}\n${r.content}\nSource: ${r.url}`).join("\n\n");
         helpDocsUsed = true;
+      }
+    }
+
+    // ─── COMPETITOR / COMPARISON WEB SEARCH ───
+    // Competitor questions need LIVE data on the competitor (Brain only has Oolio info),
+    // then the AI contrasts it against Oolio's strengths from the Brain.
+    let competitorBlock = "";
+    let competitorUsed = false;
+    if (competitorQ && !offTopic) {
+      const web = await searchWebGeneral(lastUserMessage + " pricing features 2026");
+      if (web && (web.answer || web.results.length > 0)) {
+        competitorBlock = "\n\n═══ COMPETITOR / COMPARISON — LIVE WEB SEARCH ═══\nThe user is comparing Oolio to a competitor. Use the LIVE web data below for the competitor's current details, then contrast against Oolio One's strengths from the OOLIO BRAIN above. Be fair and factual about the competitor (don't trash them), but confidently make the case for Oolio. Note pricing/features can change — recommend the user verify competitor specifics. Frame it as a sales-enablement battlecard.\n";
+        if (web.answer) competitorBlock += `\nWeb summary: ${web.answer}\n`;
+        if (web.results.length) competitorBlock += "\nSources:\n" + web.results.map((r, i) => `[C${i + 1}] ${r.title}: ${r.content}\nURL: ${r.url}`).join("\n");
+        competitorUsed = true;
+      } else {
+        competitorBlock = "\n\n═══ COMPETITOR / COMPARISON NOTE ═══\nThe user is asking a comparison question. Use the OOLIO BRAIN above to make Oolio One's case confidently. For the competitor's specifics you don't have, be honest that the rep should verify current competitor pricing/features, but still articulate why Oolio One wins on integration, hospitality focus, local support, and the full Oolioverse.";
       }
     }
 
@@ -328,7 +367,7 @@ export async function POST(request) {
       }
     }
 
-    const systemPrompt = SYSTEM_PROMPT + brainBlock + docsBlock + roadmapBlock + helpDocsBlock + offTopicBlock + `\n\nCurrent user: ${profile?.name || user.email}`;
+    const systemPrompt = SYSTEM_PROMPT + brainBlock + docsBlock + roadmapBlock + helpDocsBlock + competitorBlock + offTopicBlock + `\n\nCurrent user: ${profile?.name || user.email}`;
 
     // ─── SESSION HANDLING ───
     let sessionId = providedSessionId;
@@ -377,6 +416,7 @@ export async function POST(request) {
               documents: documents?.length || 0,
               roadmap: roadmapUsed,
               helpDocs: helpDocsUsed,
+              competitor: competitorUsed,
               offTopic: offTopicUsed,
             },
             productDetected: offTopic ? "off_topic" : detectedProduct,
@@ -414,6 +454,7 @@ export async function POST(request) {
             ...(documents?.length ? [{ type: "docs", count: documents.length }] : []),
             ...(roadmapUsed ? [{ type: "roadmap" }] : []),
             ...(helpDocsUsed ? [{ type: "help_docs" }] : []),
+            ...(competitorUsed ? [{ type: "competitor_web" }] : []),
             ...(offTopicUsed ? [{ type: "off_topic_web" }] : []),
           ];
 
