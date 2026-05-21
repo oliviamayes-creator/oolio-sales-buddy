@@ -140,10 +140,20 @@ function extractKeywords(q) {
 // Oolio domains, NEVER from the model's memory or the open web.
 function isOolioSacredFact(q) {
   const text = q.toLowerCase();
-  // Must be about Oolio (not a competitor or generic question)
-  const aboutOolio = /\b(oolio|ordermate|bepoz|swiftpos|deliverit|idealpos|oolioverse|oolio pay|ooliopay|core plan|full service|full-service|kiosk|kds|mpos|order manager|we|our|us|do you|does it|can it|can we|your)\b/i.test(text);
+
+  // TIER 1 — ALWAYS SACRED regardless of whether "Oolio" is named.
+  // In this app, ANY pricing/cost/hardware question implicitly means "what does OOLIO charge / sell".
+  // Reps say "how much are the tablets" not "how much are the Oolio tablets". These must come ONLY
+  // from the Brain or authorised Oolio sources — NEVER the open web (which returns random reseller prices).
+  const pricingOrHardware = /\b(price|pricing|cost|costs|how much|quote|fee|fees|charge|charged|rate card|rrp|\$|dollar|aud|gbp|eur|euro|hardware|terminal|tablet|cpad|kiosk|kds|printer|cash drawer|scanner|scale|switch|router|access point|stand|mount|bracket|device|epson|sunmi|lenovo|surface|netgear|ubiquiti|peripheral|sku|install(?:ation)?|setup fee|training fee)\b/i.test(text);
+  if (pricingOrHardware) return true;
+
+  // TIER 2 — SACRED only when clearly about Oolio (features / integrations / functionality).
+  // These are gated by Oolio context so we don't block genuine third-party questions
+  // like "what does SevenRooms actually do".
+  const aboutOolio = /\b(oolio|ordermate|bepoz|swiftpos|deliverit|idealpos|oolioverse|oolio pay|ooliopay|core plan|full service|full-service|order manager|we|our|us|do you|does it|can it|can we|your)\b/i.test(text);
   if (!aboutOolio) return false;
-  const sacredTopics = /\b(integrat|connect|pricing|price|cost|fee|plan|subscription|how much|charge|rate card|feature|functionalit|capab|can (?:it|we|oolio|the system) (?:do|support|handle)|does (?:it|oolio|the system)|support|includ|module|add-on|addon)/i.test(text);
+  const sacredTopics = /\b(integrat|connect|subscription|plan|feature|functionalit|capab|can (?:it|we|oolio|the system) (?:do|support|handle)|does (?:it|oolio|the system)|support|includ|module|add-on|addon)/i.test(text);
   return sacredTopics;
 }
 
