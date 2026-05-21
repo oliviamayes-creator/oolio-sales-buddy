@@ -3,36 +3,50 @@ import { createClient, createServiceClient, getCurrentUser } from "../../../lib/
 const SYSTEM_PROMPT = `You are **Oolio Onboard**, the friendly and energetic AI assistant for the Oolio Group sales team. Oolio is an Australian hospitality technology company. Purpose: "Facilitating Celebration."
 
 ═══════════════════════════════════════════════════════════
+🚨 RULE ZERO — THE GROUNDING RULE (MOST IMPORTANT RULE) 🚨
+═══════════════════════════════════════════════════════════
+
+Every factual claim you make about **Oolio's own pricing, functionality, or integrations** MUST come word-for-word from the OOLIO BRAIN, the DOCUMENTS LIBRARY, or an AUTHORISED OOLIO WEB SOURCE (help.oolio.com, oolio.com, tree.oolio.com) provided below in this prompt. If one of those three topics is not covered in those sections, you DO NOT KNOW IT, and you must say so and point the rep to the right resource.
+
+**THE SACRED THREE (strictest grounding — Brain or authorised Oolio sources ONLY):**
+- **Integrations** — which apps/platforms Oolio connects to
+- **Pricing** — plan costs, per-integration fees, add-on prices, discounts
+- **Functionality / Features** — what the Oolio product can and can't do
+
+For the sacred three, your general training knowledge is BANNED, and the open web is BANNED. You know lots of POS/hospitality software names from training (Xero, MarketMan, Resy, QuickBooks, etc.) — listing any of them as an Oolio integration without it being in the Brain or an authorised Oolio source is a FABRICATION that misleads new reps on real sales calls. The real-sounding name you "remember" is exactly the trap.
+
+**THE TEST before stating any sacred-three fact:** "Can I point to the exact Brain entry, Document, or authorised Oolio source (help.oolio.com / oolio.com / tree.oolio.com) that says this?" If NO → do NOT state it. Say you don't have it confirmed and point to the Docs tab / relevant Teams channel / Olivia.
+
+**NEVER pad a list.** If the Brain confirms 3 integrations, list ONLY those 3. Do NOT add more "helpful" examples from memory. Then say: "This is what I have confirmed — for the complete current list, check [document/Teams channel]." A short correct answer beats a long one with one invented entry.
+
+**EVERYTHING ELSE — behave like a helpful ChatGPT with web search.** For general questions, hospitality industry info, what an integration partner actually does, venue research, competitor comparisons, and casual queries, you can and should use the GENERAL WEB SEARCH results provided below and answer helpfully. Just cite your sources with links. The strict rule is ONLY about Oolio's own pricing, functionality, and integrations — everything else, be genuinely useful.
+
+═══════════════════════════════════════════════════════════
 HARD RULES — NON-NEGOTIABLE
 ═══════════════════════════════════════════════════════════
 
 1. **DEFAULT to Oolio One.** Always assume the user is asking about Oolio One unless they explicitly name another product. Do NOT ask "which product do you mean?" — just answer for Oolio One.
 
-2. **NEVER FABRICATE.** You MUST NOT invent any of these — even if it would make a more helpful response:
-   - Product specifications, model numbers, hardware brand names
-   - Integration partner names not in the approved knowledge
-   - Prices, dates, statistics, percentages
-   - URLs, feature names, employee names
-   - "Coming soon" claims about features
+2. **NEVER FABRICATE — see RULE ZERO above.** Specifically you must NEVER invent: integration/partner names, prices, plan inclusions, product specs, model numbers, hardware brands, feature names, dates, statistics, percentages, URLs, employee names, or "coming soon" claims. If it's not in the Brain or Docs below, you don't know it.
 
-3. **PRIORITY ORDER for finding answers — use this exact order:**
-   1. **OOLIO BRAIN** (the admin-curated knowledge below — your PRIMARY source)
-   2. **DOCUMENTS LIBRARY** (titles and links — if a relevant doc exists, mention it AND link the user to it)
-   3. **HELP DOCS** (live web search of help.oolio.com — only if Brain has nothing)
-   4. **GENERAL WEB** (Tavily — only for off-topic/casual)
+3. **PRIORITY ORDER for finding answers:**
+   1. **OOLIO BRAIN** (admin-curated knowledge below — your ONLY source for Oolio facts)
+   2. **DOCUMENTS LIBRARY** (titles and links — recommend and link relevant docs)
+   3. **HELP DOCS** (live web search of help.oolio.com — supplementary only)
+   4. **GENERAL WEB** (Tavily — ONLY for competitor comparisons and off-topic/casual; NEVER as a source for Oolio's own integrations/pricing/features)
 
-4. **IF YOU DON'T HAVE THE INFO, SAY SO and POINT TO RESOURCES.** Example:
+4. **IF YOU DON'T HAVE THE INFO, SAY SO and POINT TO RESOURCES.** This is the correct, expected response — not a failure. Example:
 
-   "I don't have approved info on that yet. Here's where to look:
-   - The relevant Teams channel: [pick one]
-   - Help docs: [link]
-   - Or DM Olivia Mayes (Liv) on Teams — she manages this AI's knowledge and can add it for next time."
+   "I don't have the full confirmed list in my knowledge yet. Here's where to get the verified answer:
+   - 📄 Check the relevant document in the Docs tab (if one exists, I'll link it)
+   - 💬 The relevant Teams channel: [pick one]
+   - Or DM Olivia Mayes (Liv) on Teams — she manages my knowledge and can add it so I've got it next time."
 
-   Saying "I don't know" is ALWAYS better than guessing.
+   Saying "I don't know, here's where to look" is ALWAYS better than guessing. New reps rely on you being accurate.
 
-5. **HARDWARE COMPATIBILITY** (printers, scanners, KDS displays, terminals, payment devices): NEVER list specific brands or model numbers unless they appear in the Brain or Help Docs below. Always route to the Oolio hardware/support team or help.oolio.com.
+5. **HARDWARE COMPATIBILITY** (printers, scanners, KDS displays, terminals, payment devices): NEVER list specific brands or model numbers unless they appear verbatim in the Brain or Docs below. Route to the Oolio hardware/support team or help.oolio.com.
 
-5b. **COMPETITOR COMPARISONS — you CAN and SHOULD answer these.** When a user compares Oolio to a competitor (Square, Lightspeed, Toast, Shopify, Tyro, Zeller, etc.), a LIVE WEB SEARCH section will usually be provided below with the competitor's current details. Use it to build a fair, confident sales battlecard: state the competitor's relevant facts, then make Oolio One's case (integrated payments, hospitality-first design, the full Oolioverse, local Australian support, next-business-day settlements, hospitality trading days). Be factual and fair about the competitor — never trash them — but be confident about why Oolio wins for hospitality. If you don't have a specific competitor figure, say the rep should verify it rather than inventing it. This is NOT a "say I don't know" situation — comparisons are core sales enablement.
+5b. **COMPETITOR COMPARISONS — you CAN answer these, but keep Oolio facts grounded.** When comparing Oolio to a competitor (Square, Lightspeed, Toast, etc.), a LIVE WEB SEARCH section will be provided with the COMPETITOR'S details (web data is fine for the competitor's side). For OOLIO's side of the comparison, you STILL only use the Brain — never invent Oolio features/pricing to win the comparison. State the competitor's facts from the web, then make Oolio's case using ONLY confirmed Brain facts. Be fair about the competitor, confident about Oolio. If you lack an Oolio detail, say the rep should verify it.
 
 6. **PRODUCT SEPARATION.** Oolio One, OrderMate, Bepoz, Swiftpos, Deliverit, and Idealpos are separate products. Never blend feature/pricing/process info between them.
 
@@ -121,6 +135,18 @@ function extractKeywords(q) {
   return [...new Set(words.filter(w => w.length >= 2 && !STOPWORDS.has(w)))].slice(0, 8);
 }
 
+// Is this question asking about OOLIO's OWN pricing, functionality, or integrations?
+// These are the "sacred three" — facts that may ONLY come from the Brain or authorised
+// Oolio domains, NEVER from the model's memory or the open web.
+function isOolioSacredFact(q) {
+  const text = q.toLowerCase();
+  // Must be about Oolio (not a competitor or generic question)
+  const aboutOolio = /\b(oolio|ordermate|bepoz|swiftpos|deliverit|idealpos|oolioverse|oolio pay|ooliopay|core plan|full service|full-service|kiosk|kds|mpos|order manager|we|our|us|do you|does it|can it|can we|your)\b/i.test(text);
+  if (!aboutOolio) return false;
+  const sacredTopics = /\b(integrat|connect|pricing|price|cost|fee|plan|subscription|how much|charge|rate card|feature|functionalit|capab|can (?:it|we|oolio|the system) (?:do|support|handle)|does (?:it|oolio|the system)|support|includ|module|add-on|addon)/i.test(text);
+  return sacredTopics;
+}
+
 function isOffTopicQuery(q) {
   const text = q.toLowerCase();
   const workSignals = /\b(oolio|ordermate|bepoz|swiftpos|deliverit|idealpos|pos|kds|kiosk|terminal|merchant|venue|customer|client|prospect|deal|hubspot|crm|ukg|leave|integration|payment|surcharge|loyalty|gift card|reservation|hospitality|cafe|restaurant|pub|club|stadium|qsr|fine dining|sales|pipeline|quote|pricing|onboard|training|install|teams channel|team channel|sharepoint|product|feature|hardware|help doc|support)\b/;
@@ -148,7 +174,7 @@ async function getRoadmap() {
 async function searchOolioHelpDocs(query, product) {
   if (!process.env.TAVILY_API_KEY) return null;
   const domainMap = {
-    oolio: ["help.oolio.com", "support.oolio.com", "oolio.com"],
+    oolio: ["help.oolio.com", "support.oolio.com", "oolio.com", "tree.oolio.com"],
     ordermate: ["help.ordermate.com.au"],
     bepoz: ["help.bepoz.com"],
   };
@@ -294,7 +320,10 @@ export async function POST(request) {
     let brainBlock = "";
     if (brainChunks.length > 0) {
       brainBlock = "\n\n═══ OOLIO BRAIN (primary knowledge source — admin-curated, use this FIRST) ═══\n" +
-        brainChunks.map((b, i) => `[B${i + 1}] ${b.title}\n${b.content}${b.source_url ? `\nSource: ${b.source_url}` : ""}`).join("\n\n");
+        brainChunks.map((b, i) => `[B${i + 1}] ${b.title}\n${b.content}${b.source_url ? `\nSource: ${b.source_url}` : ""}`).join("\n\n") +
+        "\n\n⚠️ REMINDER: The above Brain entries are the ONLY confirmed Oolio facts you have. If the user's question asks for something NOT covered above (e.g. an integration, price, or feature not explicitly listed), you must say you don't have it confirmed and point them to the Docs tab / relevant Teams channel / Olivia. Do NOT supplement with integration names, prices, or features from your training data or the open web — those are not verified Oolio facts.";
+    } else {
+      brainBlock = "\n\n═══ OOLIO BRAIN ═══\n(No matching Brain entries found for this question.) You do NOT have confirmed Oolio knowledge to answer this. Tell the user honestly, and point them to the Docs tab, the relevant Teams channel, or Olivia Mayes via Teams. Do NOT answer from training data or general web knowledge about POS systems — that is not verified Oolio information.";
     }
 
     // ─── DOCUMENTS LIBRARY (titles + links) ───
@@ -321,38 +350,63 @@ export async function POST(request) {
       }
     }
 
-    // ─── HELP DOCS FALLBACK ───
-    let helpDocsBlock = "";
-    let helpDocsUsed = false;
+    // ─── SEARCH ROUTING ───
+    // Rule: Oolio's OWN pricing/functionality/integrations may ONLY come from Brain or
+    // authorised Oolio domains. Everything else can use the broader web like ChatGPT.
     const offTopic = isOffTopicQuery(lastUserMessage);
     const competitorQ = isCompetitorQuestion(lastUserMessage);
-    if (!offTopic && !competitorQ && brainChunks.length < 5 && !isRoadmapQuestion(lastUserMessage)) {
+    const roadmapQ = isRoadmapQuestion(lastUserMessage);
+    const sacredFact = isOolioSacredFact(lastUserMessage);
+
+    // ── A) OOLIO HELP DOCS (authorised domains) ──
+    // Fires for any Oolio-related question (always-on, not just when Brain is thin),
+    // EXCEPT pure off-topic. Restricted to trusted Oolio domains so anything it finds is citable & authorised.
+    let helpDocsBlock = "";
+    let helpDocsUsed = false;
+    if (!offTopic && !competitorQ && !roadmapQ) {
       const results = await searchOolioHelpDocs(lastUserMessage, detectedProduct);
       if (results && results.length > 0) {
-        helpDocsBlock = "\n\n═══ OOLIO HELP DOCS (live web — fallback) ═══\n" +
-          results.map((r, i) => `[H${i + 1}] ${r.title}\n${r.content}\nSource: ${r.url}`).join("\n\n");
+        helpDocsBlock = "\n\n═══ AUTHORISED OOLIO WEB SOURCES (help.oolio.com, oolio.com, tree.oolio.com — these ARE trusted for Oolio facts) ═══\n" +
+          results.map((r, i) => `[H${i + 1}] ${r.title}\n${r.content}\nSource: ${r.url}`).join("\n\n") +
+          "\n\nThese are authorised Oolio sources. You MAY state Oolio pricing/features/integrations found here — but ALWAYS cite the source link so the rep can verify.";
         helpDocsUsed = true;
       }
     }
 
-    // ─── COMPETITOR / COMPARISON WEB SEARCH ───
-    // Competitor questions need LIVE data on the competitor (Brain only has Oolio info),
-    // then the AI contrasts it against Oolio's strengths from the Brain.
+    // ── B) BROAD WEB SEARCH (ChatGPT-style) ──
+    // For NON-sacred Oolio questions and general/hospitality questions: search the open web freely.
+    // This covers: what an integration partner actually does, venue research, general "how does X work",
+    // hospitality industry questions, etc. NOT used to source Oolio's own pricing/functionality/integrations.
+    let webBlock = "";
+    let webUsed = false;
+    const useBroadWeb = !offTopic && !competitorQ && !roadmapQ && !sacredFact;
+    if (useBroadWeb) {
+      const web = await searchWebGeneral(lastUserMessage);
+      if (web && (web.answer || web.results.length > 0)) {
+        webBlock = "\n\n═══ GENERAL WEB SEARCH (open web — use freely for general/hospitality/partner info, NOT for Oolio's own pricing/functionality/integrations) ═══\n";
+        if (web.answer) webBlock += `\nSummary: ${web.answer}\n`;
+        if (web.results.length) webBlock += "\nSources:\n" + web.results.map((r, i) => `[W${i + 1}] ${r.title}: ${r.content}\nURL: ${r.url}`).join("\n");
+        webBlock += "\n\nCite source links when you use these. REMINDER: if the question turns out to be about Oolio's OWN pricing, features, or integrations, do NOT use this open-web info for that — use only the Brain or authorised Oolio sources above.";
+        webUsed = true;
+      }
+    }
+
+    // ── C) COMPETITOR / COMPARISON ──
     let competitorBlock = "";
     let competitorUsed = false;
     if (competitorQ && !offTopic) {
       const web = await searchWebGeneral(lastUserMessage + " pricing features 2026");
       if (web && (web.answer || web.results.length > 0)) {
-        competitorBlock = "\n\n═══ COMPETITOR / COMPARISON — LIVE WEB SEARCH ═══\nThe user is comparing Oolio to a competitor. Use the LIVE web data below for the competitor's current details, then contrast against Oolio One's strengths from the OOLIO BRAIN above. Be fair and factual about the competitor (don't trash them), but confidently make the case for Oolio. Note pricing/features can change — recommend the user verify competitor specifics. Frame it as a sales-enablement battlecard.\n";
+        competitorBlock = "\n\n═══ COMPETITOR / COMPARISON — LIVE WEB SEARCH ═══\nUse the LIVE web data below for the COMPETITOR's details. For OOLIO's side, use ONLY the Brain / authorised Oolio sources above — never invent Oolio facts to win. Be fair about the competitor, confident about Oolio. Note competitor pricing/features change — tell the rep to verify. Frame as a sales battlecard.\n";
         if (web.answer) competitorBlock += `\nWeb summary: ${web.answer}\n`;
         if (web.results.length) competitorBlock += "\nSources:\n" + web.results.map((r, i) => `[C${i + 1}] ${r.title}: ${r.content}\nURL: ${r.url}`).join("\n");
         competitorUsed = true;
       } else {
-        competitorBlock = "\n\n═══ COMPETITOR / COMPARISON NOTE ═══\nThe user is asking a comparison question. Use the OOLIO BRAIN above to make Oolio One's case confidently. For the competitor's specifics you don't have, be honest that the rep should verify current competitor pricing/features, but still articulate why Oolio One wins on integration, hospitality focus, local support, and the full Oolioverse.";
+        competitorBlock = "\n\n═══ COMPETITOR / COMPARISON NOTE ═══\nUse the OOLIO BRAIN to make Oolio's case confidently. For competitor specifics you don't have, tell the rep to verify — don't invent.";
       }
     }
 
-    // ─── OFF-TOPIC WEB ───
+    // ── D) OFF-TOPIC ──
     let offTopicBlock = "";
     let offTopicUsed = false;
     if (offTopic) {
@@ -360,14 +414,14 @@ export async function POST(request) {
       if (web && (web.answer || web.results.length > 0)) {
         offTopicBlock = "\n\n═══ OFF-TOPIC LIVE WEB SEARCH ═══\nUser asked something casual. Answer briefly with personality, then nudge back to Oolio work.\n";
         if (web.answer) offTopicBlock += `\nQuick answer: ${web.answer}\n`;
-        if (web.results.length) offTopicBlock += "\nSources:\n" + web.results.map((r, i) => `[W${i + 1}] ${r.title}: ${r.content}`).join("\n");
+        if (web.results.length) offTopicBlock += "\nSources:\n" + web.results.map((r, i) => `[O${i + 1}] ${r.title}: ${r.content}`).join("\n");
         offTopicUsed = true;
       } else {
         offTopicBlock = "\n\n═══ OFF-TOPIC NOTE ═══\nThis is casual / off-topic. Use personality and nudge back to work.";
       }
     }
 
-    const systemPrompt = SYSTEM_PROMPT + brainBlock + docsBlock + roadmapBlock + helpDocsBlock + competitorBlock + offTopicBlock + `\n\nCurrent user: ${profile?.name || user.email}`;
+    const systemPrompt = SYSTEM_PROMPT + brainBlock + docsBlock + roadmapBlock + helpDocsBlock + webBlock + competitorBlock + offTopicBlock + `\n\nCurrent user: ${profile?.name || user.email}`;
 
     // ─── SESSION HANDLING ───
     let sessionId = providedSessionId;
@@ -389,6 +443,7 @@ export async function POST(request) {
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 1024,
+          temperature: 0.2,
           system: systemPrompt,
           messages: messages.map(m => ({ role: m.role, content: m.content })),
           stream: true,
@@ -416,6 +471,7 @@ export async function POST(request) {
               documents: documents?.length || 0,
               roadmap: roadmapUsed,
               helpDocs: helpDocsUsed,
+              web: webUsed,
               competitor: competitorUsed,
               offTopic: offTopicUsed,
             },
@@ -454,6 +510,7 @@ export async function POST(request) {
             ...(documents?.length ? [{ type: "docs", count: documents.length }] : []),
             ...(roadmapUsed ? [{ type: "roadmap" }] : []),
             ...(helpDocsUsed ? [{ type: "help_docs" }] : []),
+            ...(webUsed ? [{ type: "web" }] : []),
             ...(competitorUsed ? [{ type: "competitor_web" }] : []),
             ...(offTopicUsed ? [{ type: "off_topic_web" }] : []),
           ];
@@ -513,7 +570,7 @@ export async function POST(request) {
     const apiResp = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1024, system: systemPrompt, messages: messages.map(m => ({ role: m.role, content: m.content })) }),
+      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1024, temperature: 0.2, system: systemPrompt, messages: messages.map(m => ({ role: m.role, content: m.content })) }),
     });
     const data = await apiResp.json();
     if (data.error) return Response.json({ error: data.error.message }, { status: 500 });
