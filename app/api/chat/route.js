@@ -283,7 +283,7 @@ export async function POST(request) {
     let docsBlock = "";
     if (documents && documents.length > 0) {
       const docLines = documents.map(d => {
-        const link = d.external_url || `/api/admin/documents?id=${d.id}`;
+        const link = `/api/doc/${d.id}`;
         return `- [${d.title}](${link})${d.description ? ` — ${d.description}` : ""} (${d.category}, ${d.file_type})`;
       }).join("\n");
       docsBlock = `\n\n═══ DOCUMENTS LIBRARY (mention and link when relevant) ═══\n${docLines}`;
